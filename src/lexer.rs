@@ -9,6 +9,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
+    // Public functions
     pub fn new(source: String) -> Self {
         Lexer {
             source: source.chars().collect(),
@@ -28,6 +29,8 @@ impl Lexer {
         self.tokens.push(Token::new(TokenType::Eof, "".to_string(), None, self.line));
         &self.tokens
     }
+
+    // Mutator private functions
 
     fn scan_token(&mut self) {
         let c = self.advance();
@@ -83,15 +86,57 @@ impl Lexer {
             '\r' | 
             '\t' => { /* Ignore whitespace */ }
             '\n' => self.line += 1,
+            '"' => self.string(),
+            '0'..='9' => self.number(),
+            'a'..='z' | 'A'..='Z' | '_' => self.identifier(),
             _ => {
                 eprintln!("[line {}] Unexpected character: {}", self.line, c);
             }
         }
     }
 
-    fn is_at_end(&self) -> bool {
-        self.current >= self.source.len()
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            eprintln!("[line {}] Unterminated string.", self.line);
+            return;
+        }
+
+        // The closing ".
+        self.advance();
+
+        // Trim the surrounding quotes.
+        let value: String = self.source[self.start + 1..self.current - 1].iter().collect();
+        self.add_token(TokenType::String, Some(Literal::String(value)));
     }
+
+    fn number(&mut self) {
+        while Self::is_digit(self.peek()) {
+            self.advance();
+        }
+
+        // Look for a fractional part.
+        if self.peek() == '.' && Self::is_digit(self.peek_next()) {
+            // Consume the "."
+            self.advance();
+
+            while Self::is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+
+        let value: String = self.source[self.start..self.current].iter().collect();
+        let number_value: f64 = value.parse().unwrap();
+        self.add_token(TokenType::Number, Some(Literal::Number(number_value)));
+    }
+
+    // Simple mutator functions
 
     fn advance(&mut self) -> char {
         let c = self.source[self.current];
@@ -115,11 +160,68 @@ impl Lexer {
         true
     }
 
+    fn is_at_end(&self) -> bool {
+        self.current >= self.source.len()
+    }
+
     fn peek(&self) -> char {
         if self.is_at_end() {
             '\0'
         } else {
             self.source[self.current]
+        }
+    }
+
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            '\0'
+        } else {
+            self.source[self.current + 1]
+        }
+    }
+
+    fn identifier(&mut self) {
+        while Self::is_alphanumeric(self.peek()) {
+            self.advance();
+        }
+        let text: String = self.source[self.start..self.current].iter().collect();
+        let token_type = Self::keyword_type(&text).unwrap_or(TokenType::Identifier);
+        self.add_token(token_type, None);
+    }
+
+    // Helper functions
+
+    fn is_digit(c: char) -> bool {
+        c >= '0' && c <= '9'
+    }
+
+    fn is_alpha(c: char) -> bool {
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+    }
+
+    fn is_alphanumeric(c: char) -> bool {
+        Self::is_alpha(c) || Self::is_digit(c)
+    }
+
+    fn keyword_type(text: &str) -> Option<TokenType> {
+        match text {
+            "and" => Some(TokenType::And),
+            "class" => Some(TokenType::Class),
+            "else" => Some(TokenType::Else),
+            "false" => Some(TokenType::False),
+            "for" => Some(TokenType::For),
+            "fun" => Some(TokenType::Fun),
+            "if" => Some(TokenType::If),
+            "nil" => Some(TokenType::Nil),
+            "or" => Some(TokenType::Or),
+            "print" => Some(TokenType::Print),
+            "return" => Some(TokenType::Return),
+            "super" => Some(TokenType::Super),
+            "this" => Some(TokenType::This),
+            "true" => Some(TokenType::True),
+            "var" => Some(TokenType::Var),
+            "while" => Some(TokenType::While),
+            _ => None,
         }
     }
 }

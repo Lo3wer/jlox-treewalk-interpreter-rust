@@ -39,7 +39,11 @@ impl Lox {
     }
 
     fn run(&mut self, source: &str) {
-        println!("{}", source);
-        // later: scan, parse, and set self.had_error = true on failure
+        let mut lexer = Lexer::new(source.to_string());
+        let tokens = lexer.scan_tokens();
+
+        for token in tokens {
+            println!("{}", token);
+        }
     }
 }

@@ -4,7 +4,6 @@ use std::fmt;
 pub enum Literal {
     String(String),
     Number(f64),
-    Bool(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +49,9 @@ impl Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?} {} {:?}", self.token_type, self.lexeme, self.literal)
+        match &self.literal {
+            Some(literal) => write!(f, "{:?} {} {:?}", self.token_type, self.lexeme, literal),
+            None => write!(f, "{:?} {}", self.token_type, self.lexeme),
+        }
     }
 }
