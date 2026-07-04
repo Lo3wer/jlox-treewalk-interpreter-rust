@@ -1,5 +1,6 @@
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use crate::ast_printer::AstPrinter;
 use crate::token::{Token, TokenType};
 use std::fs;
 use std::io::{self, BufRead, Write};
@@ -61,13 +62,18 @@ impl Lox {
         let mut lexer = Lexer::new(source.to_string());
         let tokens = lexer.scan_tokens(self);
         let mut parser = Parser::new(tokens);
-        let expression = parser.parse(self);
+        let expression = match parser.parse(self) {
+            Ok(expression) => expression,
+            Err(_) => return,
+        };
 
         if self.had_error {
             return;
         }
 
-
+        let printer = AstPrinter::new();
+        let ast = printer.print(&expression);
+        println!("{}", ast);
     }
 }
 

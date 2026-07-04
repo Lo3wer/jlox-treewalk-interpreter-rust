@@ -4,6 +4,7 @@ mod lox;
 mod values;
 mod expr;
 mod parser;
+mod ast_printer;
 
 use lox::Lox;
 use std::process;
