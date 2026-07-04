@@ -1,14 +1,14 @@
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
-enum Literal {
+pub enum Literal {
     String(String),
     Number(f64),
     Bool(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TokenType {
+pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,
     Comma, Dot, Minus, Plus, Semicolon, Slash, Star,

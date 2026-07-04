@@ -1,4 +1,4 @@
-// use crate::lexer::Lexer;
+use crate::lexer::Lexer;
 use std::fs;
 use std::io::{self, Write, BufRead};
 use std::process;
@@ -41,10 +41,5 @@ impl Lox {
     fn run(&mut self, source: &str) {
         println!("{}", source);
         // later: scan, parse, and set self.had_error = true on failure
-    }
-
-    fn error(&mut self, line: usize, message: &str) {
-        eprintln!("[line {}] Error: {}", line, message);
-        self.had_error = true;
     }
 }
