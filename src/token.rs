@@ -1,10 +1,5 @@
+use crate::values::Literal;
 use std::fmt;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Literal {
-    String(String),
-    Number(f64),
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenType {
@@ -44,6 +39,18 @@ impl Token {
             literal,
             line,
         }
+    }
+
+    pub fn token_type(&self) -> TokenType {
+        self.token_type
+    }
+
+    pub fn literal(&self) -> Option<&Literal> {
+        self.literal.as_ref()
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
 

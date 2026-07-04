@@ -1,4 +1,5 @@
-use crate::token::{Token, Literal};
+use crate::token::Token;
+use crate::values::Literal;
 
 pub enum Expr {
     Binary {

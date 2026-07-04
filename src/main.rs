@@ -1,6 +1,9 @@
 mod token;
 mod lexer;
 mod lox;
+mod values;
+mod expr;
+mod parser;
 
 use lox::Lox;
 use std::process;

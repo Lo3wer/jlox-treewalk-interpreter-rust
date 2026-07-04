@@ -1,4 +1,5 @@
-use crate::token::{Literal, Token, TokenType};
+use crate::token::{Token, TokenType};
+use crate::values::Literal;
 
 pub struct Lexer {
     source: Vec<char>,
