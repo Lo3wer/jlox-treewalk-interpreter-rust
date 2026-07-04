@@ -1,5 +1,6 @@
 use crate::token::{Token, TokenType};
 use crate::values::Literal;
+use crate::lox::ErrorReporter;
 
 pub struct Lexer {
     source: Vec<char>,
@@ -10,7 +11,6 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    // Public functions
     pub fn new(source: String) -> Self {
         Lexer {
             source: source.chars().collect(),
@@ -21,24 +21,23 @@ impl Lexer {
         }
     }
 
-    pub fn scan_tokens<F>(&mut self, mut report_error: F) -> &Vec<Token>
+    pub fn scan_tokens<R>(&mut self, reporter: &mut R) -> Vec<Token>
     where
-        F: FnMut(usize, &str),
+        R: ErrorReporter,
     {
         while !self.is_at_end() {
             self.start = self.current;
-            self.scan_token(&mut report_error);
+            self.scan_token(reporter);
         }
 
         self.tokens.push(Token::new(TokenType::Eof, "".to_string(), None, self.line));
-        &self.tokens
+        std::mem::take(&mut self.tokens)
     }
 
-    // Mutator private functions
-
-    fn scan_token<F>(&mut self, report_error: &mut F)
+    // Scanning routines
+    fn scan_token<R>(&mut self, reporter: &mut R)
     where
-        F: FnMut(usize, &str),
+        R: ErrorReporter,
     {
         let c = self.advance();
         match c {
@@ -95,7 +94,7 @@ impl Lexer {
                         self.advance();
                     }
                     if self.is_at_end() {
-                        report_error(self.line, "Unterminated block comment.");
+                        reporter.error(self.line, "Unterminated block comment.");
                     } else {
                         // Consume the closing */
                         self.advance(); // consume '*'
@@ -109,18 +108,18 @@ impl Lexer {
             '\r' | 
             '\t' => { /* Ignore whitespace */ }
             '\n' => self.line += 1,
-            '"' => self.string(report_error),
+            '"' => self.string(reporter),
             c if Self::is_digit(c) => self.number(),
             c if Self::is_alpha(c) => self.identifier(),
             _ => {
-                report_error(self.line, "Unexpected character.");
+                reporter.error(self.line, "Unexpected character.");
             }
         }
     }
 
-    fn string<F>(&mut self, report_error: &mut F)
+    fn string<R>(&mut self, reporter: &mut R)
     where
-        F: FnMut(usize, &str),
+        R: ErrorReporter,
     {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
@@ -130,7 +129,7 @@ impl Lexer {
         }
 
         if self.is_at_end() {
-            report_error(self.line, "Unterminated string.");
+            reporter.error(self.line, "Unterminated string.");
             return;
         }
 
@@ -162,8 +161,7 @@ impl Lexer {
         self.add_token(TokenType::Number, Some(Literal::Number(number_value)));
     }
 
-    // Simple mutator functions
-
+    // Token stream helpers
     fn advance(&mut self) -> char {
         let c = self.source[self.current];
         self.current += 1;

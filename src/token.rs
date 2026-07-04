@@ -45,6 +45,10 @@ impl Token {
         self.token_type
     }
 
+    pub fn lexeme(&self) -> &str {
+        &self.lexeme
+    }
+
     pub fn literal(&self) -> Option<&Literal> {
         self.literal.as_ref()
     }

@@ -1,6 +1,8 @@
 use crate::lexer::Lexer;
+use crate::parser::Parser;
+use crate::token::{Token, TokenType};
 use std::fs;
-use std::io::{self, Write, BufRead};
+use std::io::{self, BufRead, Write};
 use std::process;
 
 pub struct Lox {
@@ -14,6 +16,14 @@ impl Lox {
 
     pub fn error(&mut self, line: usize, message: &str) {
         self.report(line, "", message);
+    }
+
+    pub fn error_token(&mut self, token: &Token, message: &str) {
+        if token.token_type() == TokenType::Eof {
+            self.report(token.line(), " at end", message);
+        } else {
+            self.report(token.line(), &format!(" at '{}'", token.lexeme()), message);
+        }
     }
 
     fn report(&mut self, line: usize, where_: &str, message: &str) {
@@ -49,10 +59,29 @@ impl Lox {
 
     fn run(&mut self, source: &str) {
         let mut lexer = Lexer::new(source.to_string());
-        let tokens = lexer.scan_tokens(|line, message| self.error(line, message));
+        let tokens = lexer.scan_tokens(self);
+        let mut parser = Parser::new(tokens);
+        let expression = parser.parse(self);
 
-        for token in tokens {
-            println!("{}", token);
+        if self.had_error {
+            return;
         }
+
+
+    }
+}
+
+pub trait ErrorReporter {
+    fn error(&mut self, line: usize, message: &str);
+    fn error_token(&mut self, token: &Token, message: &str);
+}
+
+impl ErrorReporter for Lox {
+    fn error(&mut self, line: usize, message: &str) {
+        Lox::error(self, line, message);
+    }
+
+    fn error_token(&mut self, token: &Token, message: &str) {
+        Lox::error_token(self, token, message);
     }
 }
