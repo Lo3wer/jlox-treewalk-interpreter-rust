@@ -1,20 +1,19 @@
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::evaluator::Evaluator;
-use crate::ast_printer::AstPrinter;
 use crate::token::{Token, TokenType};
-use crate::values::Literal;
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::process;
 
 pub struct Lox {
     had_error: bool,
+    had_runtime_error: bool,
 }
 
 impl Lox {
     pub fn new() -> Self {
-        Lox { had_error: false }
+        Lox { had_error: false, had_runtime_error: false }
     }
 
     pub fn error(&mut self, line: usize, message: &str) {
@@ -29,6 +28,11 @@ impl Lox {
         }
     }
 
+    pub fn runtime_error(&mut self, message: &str, token: &Token) {
+        eprintln!("Runtime error at line {}: {}", token.line(), message);
+        self.had_runtime_error = true;
+    }
+
     fn report(&mut self, line: usize, where_: &str, message: &str) {
         eprintln!("[line {line}] Error{where_}: {message}");
         self.had_error = true;
@@ -39,6 +43,9 @@ impl Lox {
         self.run(&contents);
         if self.had_error {
             process::exit(65);
+        }
+        if self.had_runtime_error {
+            process::exit(70);
         }
         Ok(())
     }

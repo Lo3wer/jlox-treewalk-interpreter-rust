@@ -2,9 +2,7 @@ use crate::token::{Token, TokenType};
 use crate::values::Literal;
 use crate::expr::Expr;
 use crate::lox::ErrorReporter;
-
-#[derive(Debug, Clone, Copy)]
-pub struct ParseError;
+use crate::errors::ParseError;
 
 pub struct Parser {
     tokens: Vec<Token>,

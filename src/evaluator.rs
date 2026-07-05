@@ -28,11 +28,7 @@ impl Evaluator {
             }
             Expr::Ternary { condition, then_branch, else_branch } => {
                 let condition_val = self.evaluate(condition)?;
-                if let Literal::Bool(true) = condition_val {
-                    self.evaluate(then_branch)
-                } else {
-                    self.evaluate(else_branch)
-                }
+                self.evaluate_ternary(&condition_val, then_branch, else_branch)
             }
         }
     }
