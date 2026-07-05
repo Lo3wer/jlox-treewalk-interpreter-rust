@@ -29,6 +29,9 @@ impl AstPrinter {
             Expr::Unary { operator, right } => {
                 format!("({} {})", operator.lexeme(), self.print(right))
             }
+            Expr::Ternary { condition, then_branch, else_branch } => {
+                format!("(ternary {} {} {})", self.print(condition), self.print(then_branch), self.print(else_branch))
+            }
         }
     }
 

@@ -23,12 +23,68 @@ impl Parser {
         self.expression(reporter)
     }
 
+    // Grammar rules based on the Lox language specification with ternary and comma operators
+    // expression     → comma ;
+    // comma          → ternary ( "," ternary )* ;
+    // ternary        → equality ( "?" expression ":" ternary )? ;
+    // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+    // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+    // term           → factor ( ( "-" | "+" ) factor )* ;
+    // factor         → unary ( ( "/" | "*" ) unary )* ;
+    // unary          → ( "!" | "-" ) unary
+    //                | primary ;
+    // primary        → NUMBER | STRING | "true" | "false" | "nil"
+    //                | "(" expression ")"
+    //                | ( "!=" | "==" ) comparison
+    //                | ( ">" | ">=" | "<" | "<=" ) term
+    //                | ( "+" ) factor
+    //                | ( "/" | "*" ) unary ;
+
     // Grammar entry point
     fn expression<R>(&mut self, reporter: &mut R) -> Result<Expr, ParseError>
     where
         R: ErrorReporter,
     {
-        self.equality(reporter)
+        self.comma(reporter)
+    }
+
+    fn comma<R>(&mut self, reporter: &mut R) -> Result<Expr, ParseError>
+    where
+        R: ErrorReporter,
+    {
+        let mut expr = self.ternary(reporter)?;
+
+        while self.match_token(&[TokenType::Comma]) {
+            let operator = self.previous().clone();
+            let right = self.ternary(reporter)?;
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn ternary<R>(&mut self, reporter: &mut R) -> Result<Expr, ParseError>
+    where
+        R: ErrorReporter,
+    {
+        let mut expr = self.equality(reporter)?;
+
+        if self.match_token(&[TokenType::Question]) {
+            let then_branch = self.expression(reporter)?;
+            self.consume(TokenType::Colon, "Expect ':' after then branch of ternary expression.", reporter)?;
+            let else_branch = self.ternary(reporter)?;
+            expr = Expr::Ternary {
+                condition: Box::new(expr),
+                then_branch: Box::new(then_branch),
+                else_branch: Box::new(else_branch),
+            };
+        }
+
+        Ok(expr)
     }
 
     // Binary precedence levels
@@ -143,7 +199,6 @@ impl Parser {
         if self.match_token(&[TokenType::Nil]) {
             return Ok(Expr::Literal { value: Some(Literal::Nil) });
         }
-
         if self.match_token(&[TokenType::Number, TokenType::String]) {
             let literal = match self.previous().literal() {
                 Some(lit) => lit.clone(),
@@ -151,12 +206,14 @@ impl Parser {
             };
             return Ok(Expr::Literal { value: Some(literal) });
         }
-
         if self.match_token(&[TokenType::LeftParen]) {
             let expr = self.expression(reporter)?;
             self.consume(TokenType::RightParen, "Expect ')' after expression.", reporter)?;
             return Ok(Expr::Grouping { expression: Box::new(expr) });
         }
+
+        // error productions
+
         Err(self.error(self.peek(), "Expected expression.", reporter))
     }
 

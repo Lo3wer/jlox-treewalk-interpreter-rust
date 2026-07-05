@@ -17,4 +17,9 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+    Ternary {
+        condition: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Box<Expr>,
+    },
 }

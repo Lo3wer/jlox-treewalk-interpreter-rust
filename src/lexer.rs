@@ -51,6 +51,8 @@ impl Lexer {
             '+' => self.add_token(TokenType::Plus, None),
             ';' => self.add_token(TokenType::Semicolon, None),
             '*' => self.add_token(TokenType::Star, None),
+            '?' => self.add_token(TokenType::Question, None),
+            ':' => self.add_token(TokenType::Colon, None),
             '!' => {
                 if self.match_char('=') {
                     self.add_token(TokenType::BangEqual, None);
