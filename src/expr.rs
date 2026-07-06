@@ -22,4 +22,7 @@ pub enum Expr {
         then_branch: Box<Expr>,
         else_branch: Box<Expr>,
     },
+    Variable {
+        name: Token,
+    }
 }

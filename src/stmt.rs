@@ -1,4 +1,5 @@
 use crate::expr::Expr;
+use crate::token::Token;
 
 pub enum Stmt {
     Expression {
@@ -6,5 +7,9 @@ pub enum Stmt {
     },
     Print {
         expression: Box<Expr>,
+    },
+    Var {
+        name: Token,
+        initializer: Box<Expr>,
     },
 }

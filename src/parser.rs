@@ -28,29 +28,27 @@ impl Parser {
         Ok(statements)
     }
 
-    // Grammar rules based on the Lox language specification with ternary and comma operators
-    // program        → statement* EOF ;
-    // statement      → exprStmt
-    //                | printStmt ;
-    // exprStmt       → expression ";" ;
-    // printStmt      → "print" expression ";" ;
-    // -- below encompass statement handling --
-    // expression     → comma ;
-    // comma          → ternary ( "," ternary )* ;
-    // ternary        → equality ( "?" expression ":" ternary )? ;
-    // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-    // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-    // term           → factor ( ( "-" | "+" ) factor )* ;
-    // factor         → unary ( ( "/" | "*" ) unary )* ;
-    // unary          → ( "!" | "-" ) unary
-    //                | primary ;
-    // primary        → NUMBER | STRING | "true" | "false" | "nil"
-    //                | "(" expression ")"
-    // -- below functions are not implemented for primary, error handling is still general --
-    //                | ( "!=" | "==" ) comparison
-    //                | ( ">" | ">=" | "<" | "<=" ) term
-    //                | ( "+" ) factor
-    //                | ( "/" | "*" ) unary ;
+    // refer to grammar.md for grammar rules
+
+    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_token(&[TokenType::Var]) {
+            return self.var_declaration();
+        }
+        self.statement()
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
+
+        let mut initializer = Expr::Literal { value: None };
+        if self.match_token(&[TokenType::Equal]) {
+            initializer = self.expression()?;
+        }
+
+        self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.")?;
+
+        Ok(Stmt::Var { name, initializer })
+    }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         if self.match_token(&[TokenType::Print]) {
@@ -208,11 +206,13 @@ impl Parser {
             return Ok(Expr::Literal { value: Some(Literal::Nil) });
         }
         if self.match_token(&[TokenType::Number, TokenType::String]) {
-            let literal = match self.previous().literal() {
-                Some(lit) => lit.clone(),
-                None => panic!("Expected a literal value."),
-            };
+            let literal = self.previous().literal()
+                .cloned()
+                .ok_or_else(|| self.error(self.previous(), "Expected a literal value."))?;
             return Ok(Expr::Literal { value: Some(literal) });
+        }
+        if self.match_token(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable { name: self.previous().clone() });
         }
         if self.match_token(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
