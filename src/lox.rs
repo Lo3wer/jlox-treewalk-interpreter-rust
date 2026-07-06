@@ -90,7 +90,7 @@ impl Lox {
 
         let evaluator = Evaluator::new();
         match evaluator.interpret(&expression) {
-            Ok(value) => println!("{:?}", value),
+            Ok(value) => println!("{}", value),
             Err(error) => self.report_runtime_error(&error),
         }
     }

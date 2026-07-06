@@ -3,6 +3,8 @@ use crate::expr::Expr;
 use crate::token::{Token, TokenType};
 use crate::values::Literal;
 
+use std::cmp::Ordering;
+
 pub struct Evaluator {}
 
 impl Evaluator {
@@ -45,44 +47,43 @@ impl Evaluator {
         }
     }
 
+    /// Evaluates a binary expression based on the operator and operands.
     fn evaluate_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
         match operator.token_type() {
-            TokenType::Plus => match (left, right) {
-                (Literal::Number(l), Literal::Number(r)) => {
-                    Ok(Literal::Number(l + r))
-                }
-                (Literal::String(l), Literal::String(r)) => {
-                    Ok(Literal::String(format!("{}{}", l, r)))
-                }
-                _ => Err(self.runtime_error(operator, "Operands must be two numbers or two strings.")),
-            },
-            TokenType::Minus => self.numeric_binary(left, operator, right, |l, r| {
-                Literal::Number(l - r)
-            }),
-            TokenType::Star => self.numeric_binary(left, operator, right, |l, r| {
-                Literal::Number(l * r)
-            }),
-            TokenType::Slash => self.numeric_binary(left, operator, right, |l, r| {
-                Literal::Number(l / r)
-            }),
-            TokenType::Greater => self.comparison_binary(left, operator, right, |l, r| {
-                Literal::Bool(l > r)
-            }),
-            TokenType::GreaterEqual => self.comparison_binary(left, operator, right, |l, r| {
-                Literal::Bool(l >= r)
-            }),
-            TokenType::Less => self.comparison_binary(left, operator, right, |l, r| {
-                Literal::Bool(l < r)
-            }),
-            TokenType::LessEqual => self.comparison_binary(left, operator, right, |l, r| {
-                Literal::Bool(l <= r)
-            }),
+            TokenType::Plus => self.addition_binary(left, operator, right),
+            TokenType::Minus => self.numeric_binary(left, operator, right, |l, r| Literal::Number(l - r)),
+            TokenType::Star => self.numeric_binary(left, operator, right, |l, r| Literal::Number(l * r)),
+            TokenType::Slash => self.division_binary(left, operator, right),
+            TokenType::Greater => self.comparison_binary(left, operator, right, |ord| ord == Ordering::Greater),
+            TokenType::GreaterEqual => self.comparison_binary(left, operator, right, |ord| ord != Ordering::Less),
+            TokenType::Less => self.comparison_binary(left, operator, right, |ord| ord == Ordering::Less),
+            TokenType::LessEqual => self.comparison_binary(left, operator, right, |ord| ord != Ordering::Greater),
             TokenType::EqualEqual => Ok(Literal::Bool(self.is_equal(left, right))),
             TokenType::BangEqual => Ok(Literal::Bool(!self.is_equal(left, right))),
             _ => Err(self.runtime_error(operator, "Unknown binary operator.")),
         }
     }
 
+    /// Handles addition for numbers and string concatenation.
+    fn addition_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
+        match (left, right) {
+                (Literal::Number(l), Literal::Number(r)) => {
+                    Ok(Literal::Number(l + r))
+                }
+                (Literal::String(l), Literal::String(r)) => {
+                    Ok(Literal::String(format!("{}{}", l, r)))
+                }
+                (Literal::String(l), Literal::Number(r)) => {
+                    Ok(Literal::String(format!("{}{}", l, r)))
+                }
+                (Literal::Number(l), Literal::String(r)) => {
+                    Ok(Literal::String(format!("{}{}", l, r)))
+                }
+                _ => Err(self.runtime_error(operator, "Operands must be two numbers or atleast one string.")),
+        }
+    }
+
+    /// Handles numeric binary operations like subtraction, multiplication, and division.
     fn numeric_binary<F>(&self, left: &Literal, operator: &Token, right: &Literal, combine: F) -> Result<Literal, RuntimeError>
     where
         F: Fn(f64, f64) -> Literal,
@@ -95,15 +96,30 @@ impl Evaluator {
         }
     }
 
+    /// Handles division and checks for division by zero.
+    fn division_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
+        match (left, right) {
+            (Literal::Number(l), Literal::Number(r)) if *r == 0.0 => {
+                Err(self.runtime_error(operator, "Division by zero."))
+            }
+            _ => self.numeric_binary(left, operator, right, |l, r| Literal::Number(l / r)),
+        }
+    }
+
+    /// Uses the std::cmp::Ordering to compare two literals and applies the provided comparison function.
     fn comparison_binary<F>(&self, left: &Literal, operator: &Token, right: &Literal, combine: F) -> Result<Literal, RuntimeError>
     where
-        F: Fn(f64, f64) -> Literal,
+        F: Fn(Ordering) -> bool,
     {
-        match (left, right) {
-            (Literal::Number(l), Literal::Number(r)) => {
-                Ok(combine(*l, *r))
-            }
-            _ => Err(self.runtime_error(operator, "Operands must be numbers.")),
+        let ordering = match (left, right) {
+            (Literal::Number(l), Literal::Number(r)) => l.partial_cmp(r),
+            (Literal::String(l), Literal::String(r)) => l.partial_cmp(r),
+            _ => None,
+        };
+
+        match ordering {
+            Some(ord) => Ok(Literal::Bool(combine(ord))),
+            None => Err(self.runtime_error(operator, "Operands must be two numbers or two strings.")),
         }
     }
 
