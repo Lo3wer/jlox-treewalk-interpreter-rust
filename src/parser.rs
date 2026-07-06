@@ -1,6 +1,7 @@
 use crate::token::{Token, TokenType};
 use crate::values::Literal;
 use crate::expr::Expr;
+use crate::stmt::Stmt;
 use crate::errors::ParseError;
 
 pub struct Parser {
@@ -13,11 +14,27 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, ParseError> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(stmt) => statements.push(stmt),
+                Err(err) => {
+                    self.synchronize();
+                    return Err(err);
+                }
+            }
+        }
+        Ok(statements)
     }
 
     // Grammar rules based on the Lox language specification with ternary and comma operators
+    // program        → statement* EOF ;
+    // statement      → exprStmt
+    //                | printStmt ;
+    // exprStmt       → expression ";" ;
+    // printStmt      → "print" expression ";" ;
+    // -- below encompass statement handling --
     // expression     → comma ;
     // comma          → ternary ( "," ternary )* ;
     // ternary        → equality ( "?" expression ":" ternary )? ;
@@ -34,6 +51,29 @@ impl Parser {
     //                | ( ">" | ">=" | "<" | "<=" ) term
     //                | ( "+" ) factor
     //                | ( "/" | "*" ) unary ;
+
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_token(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expect ';' after expression.")?;
+        Ok(Stmt::Expression {
+            expression: Box::new(expr),
+        })
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+        Ok(Stmt::Print {
+            expression: Box::new(value),
+        })
+    }
 
     // Grammar entry point
     fn expression(&mut self) -> Result<Expr, ParseError> {

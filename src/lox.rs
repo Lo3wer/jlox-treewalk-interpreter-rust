@@ -81,8 +81,8 @@ impl Lox {
         }
 
         let mut parser = Parser::new(tokens);
-        let expression = match parser.parse() {
-            Ok(expression) => expression,
+        let statements = match parser.parse() {
+            Ok(statements) => statements,
             Err(error) => {
                 self.report_parse_error(&error);
                 return;
@@ -90,8 +90,8 @@ impl Lox {
         };
 
         let evaluator = Evaluator::new();
-        match evaluator.interpret(&expression) {
-            Ok(value) => println!("{}", value),
+        match evaluator.interpret(statements) {
+            Ok(()) => {},
             Err(error) => self.report_runtime_error(&error),
         }
     }

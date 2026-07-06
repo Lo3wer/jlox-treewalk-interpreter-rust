@@ -2,6 +2,7 @@ use crate::errors::RuntimeError;
 use crate::expr::Expr;
 use crate::token::{Token, TokenType};
 use crate::values::Literal;
+use crate::stmt::Stmt;
 
 use std::cmp::Ordering;
 
@@ -12,8 +13,29 @@ impl Evaluator {
         Evaluator {}
     }
 
-    pub fn interpret(&self, expr: &Expr) -> Result<Literal, RuntimeError> {
-        self.evaluate(expr)
+    pub fn interpret(&self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
+        for statement in statements {
+            self.execute(statement)?;
+        }
+        Ok(())
+    }
+
+    fn execute(&self, stmt: Stmt) -> Result<(), RuntimeError> {
+        match stmt {
+            Stmt::Expression { expression } => self.expression_stmt(expression),
+            Stmt::Print { expression } => self.print_stmt(expression),
+        }
+    }
+
+    fn expression_stmt(&self, expression: Box<Expr>) -> Result<(), RuntimeError> {
+        self.evaluate(&expression)?;
+        Ok(())
+    }
+
+    fn print_stmt(&self, expression: Box<Expr>) -> Result<(), RuntimeError> {
+        let value = self.evaluate(&expression)?;
+        println!("{}", value);
+        Ok(())
     }
 
     fn evaluate(&self, expr: &Expr) -> Result<Literal, RuntimeError> {
