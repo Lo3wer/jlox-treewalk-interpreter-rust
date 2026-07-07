@@ -10,11 +10,12 @@ use std::process;
 pub struct Lox {
     had_error: bool,
     had_runtime_error: bool,
+    prompt: bool,
 }
 
 impl Lox {
     pub fn new() -> Self {
-        Lox { had_error: false, had_runtime_error: false }
+        Lox { had_error: false, had_runtime_error: false, prompt: false }
     }
 
     fn report(&mut self, line: usize, where_: &str, message: &str) {
@@ -41,6 +42,7 @@ impl Lox {
     }
 
     pub fn run_file(&mut self, path: &str) -> io::Result<()> {
+        self.prompt = false;
         let contents = fs::read_to_string(path)?;
         self.run(&contents);
         if self.had_error {
@@ -53,6 +55,7 @@ impl Lox {
     }
 
     pub fn run_prompt(&mut self) -> io::Result<()> {
+        self.prompt = true;
         let stdin = io::stdin();
         let mut line = String::new();
 
@@ -71,6 +74,7 @@ impl Lox {
     }
 
     fn run(&mut self, source: &str) {
+        // lexing
         let mut lexer = Lexer::new(source.to_string());
         let (tokens, lex_errors) = lexer.scan_tokens();
         for error in &lex_errors {
@@ -80,8 +84,14 @@ impl Lox {
             return;
         }
 
+        //parsing
         let mut parser = Parser::new(tokens);
-        let statements = match parser.parse() {
+        let execution_type = if self.prompt {
+            parser.parse_prompt_line()
+        } else {
+            parser.parse()
+        };
+        let statements = match execution_type {
             Ok(statements) => statements,
             Err(parse_errors) => {
                 for error in &parse_errors {
@@ -91,6 +101,7 @@ impl Lox {
             }
         };
 
+        // evaluation
         let mut evaluator = Evaluator::new();
         match evaluator.interpret(statements) {
             Ok(()) => {},

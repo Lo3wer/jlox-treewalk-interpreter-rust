@@ -15,6 +15,23 @@ impl Parser {
         Parser { tokens, errors: Vec::new(), current: 0 }
     }
 
+    pub fn parse_prompt_line(&mut self) -> Result<Vec<Stmt>, Vec<ParseError>> {
+        let checkpoint = self.current;
+        
+        if let Ok(expr) = self.expression() {
+            // must consume everything up to EOF to count as "just an expression".
+            if self.check(&TokenType::Semicolon) {
+                self.advance();
+            }
+            if self.is_at_end() {
+                return Ok(vec![Stmt::Print{ expression: Box::new(expr) }]);
+            }
+        }
+        // backtrack and parse normally.
+        self.current = checkpoint;
+        self.parse()
+    }
+
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
 
