@@ -3,12 +3,12 @@ use crate::expr::Expr;
 use crate::token::{Token, TokenType};
 use crate::values::Literal;
 use crate::stmt::Stmt;
-use crate::environment::Environment;
+use crate::environment::{Environment, EnvRef};
 
 use std::cmp::Ordering;
 
 pub struct Evaluator {
-    environment: Environment
+    environment: EnvRef
 }
 
 impl Evaluator {
@@ -28,7 +28,20 @@ impl Evaluator {
             Stmt::Expression { expression } => self.expression_stmt(expression),
             Stmt::Print { expression } => self.print_stmt(expression),
             Stmt::Var { name, initializer } => self.var_stmt(name, initializer),
+            Stmt::Block { statements } => self.execute_block(statements, Environment::new_enclosed(self.environment.clone())),
         }
+    }
+
+    fn execute_block(&mut self, statements: Vec<Stmt>, environment: EnvRef) -> Result<(), RuntimeError> {
+        let previous = self.environment.clone();
+        self.environment = environment;
+
+        for statement in statements {
+            self.execute(statement)?;
+        }
+
+        self.environment = previous;
+        Ok(())
     }
 
     fn expression_stmt(&mut self, expression: Box<Expr>) -> Result<(), RuntimeError> {
@@ -44,7 +57,7 @@ impl Evaluator {
 
     fn var_stmt(&mut self, name: Token, initializer: Box<Expr>) -> Result<(), RuntimeError> {
         let value = self.evaluate(&initializer)?;
-        self.environment.define(&name, value);
+        self.environment.borrow_mut().define(&name, value);
         Ok(())
     }
 
@@ -65,10 +78,10 @@ impl Evaluator {
                 let condition_val = self.evaluate(condition)?;
                 self.evaluate_ternary(&condition_val, then_branch, else_branch)
             }
-            Expr::Variable { name } => self.environment.get(name),
+            Expr::Variable { name } => self.environment.borrow().get(name),
             Expr::Assign { name, value } => {
                 let value_val = self.evaluate(value)?;
-                self.environment.assign(name, value_val.clone())?;
+                self.environment.borrow_mut().assign(name, value_val.clone())?;
                 Ok(value_val)
             }
         }
