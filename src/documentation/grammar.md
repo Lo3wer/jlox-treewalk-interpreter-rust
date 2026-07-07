@@ -8,7 +8,9 @@ statement      → exprStmt
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 expression     → comma ;
-comma          → ternary ( "," ternary )* ;
+comma          → assignment ( "," assignment )* ;
+assignment     → IDENTIFIER "=" assignment
+               | ternary ;
 ternary        → equality ( "?" expression ":" ternary )? ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;

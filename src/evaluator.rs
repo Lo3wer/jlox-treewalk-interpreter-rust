@@ -31,12 +31,12 @@ impl Evaluator {
         }
     }
 
-    fn expression_stmt(&self, expression: Box<Expr>) -> Result<(), RuntimeError> {
+    fn expression_stmt(&mut self, expression: Box<Expr>) -> Result<(), RuntimeError> {
         self.evaluate(&expression)?;
         Ok(())
     }
 
-    fn print_stmt(&self, expression: Box<Expr>) -> Result<(), RuntimeError> {
+    fn print_stmt(&mut self, expression: Box<Expr>) -> Result<(), RuntimeError> {
         let value = self.evaluate(&expression)?;
         println!("{}", value);
         Ok(())
@@ -48,7 +48,7 @@ impl Evaluator {
         Ok(())
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<Literal, RuntimeError> {
         match expr {
             Expr::Binary { left, operator, right } => {
                 let left_val = self.evaluate(left)?;
@@ -66,6 +66,11 @@ impl Evaluator {
                 self.evaluate_ternary(&condition_val, then_branch, else_branch)
             }
             Expr::Variable { name } => self.environment.get(name),
+            Expr::Assign { name, value } => {
+                let value_val = self.evaluate(value)?;
+                self.environment.assign(name, value_val.clone())?;
+                Ok(value_val)
+            }
         }
     }
 
@@ -163,7 +168,7 @@ impl Evaluator {
         }
     }
 
-    fn evaluate_ternary(&self, condition: &Literal, then_branch: &Expr, else_branch: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate_ternary(&mut self, condition: &Literal, then_branch: &Expr, else_branch: &Expr) -> Result<Literal, RuntimeError> {
         if let Literal::Bool(true) = condition {
             self.evaluate(then_branch)
         } else {

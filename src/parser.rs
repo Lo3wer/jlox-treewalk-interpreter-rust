@@ -82,16 +82,36 @@ impl Parser {
     }
 
     fn comma(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.ternary()?;
+        let mut expr = self.assignment()?;
 
         while self.match_token(&[TokenType::Comma]) {
             let operator = self.previous().clone();
-            let right = self.ternary()?;
+            let right = self.assignment()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
             };
+        }
+
+        Ok(expr)
+    }
+
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
+        let expr = self.ternary()?;
+
+        if self.match_token(&[TokenType::Equal]) {
+            let equals = self.previous().clone();
+            let value = self.assignment()?;
+
+            if let Expr::Variable { name } = expr {
+                return Ok(Expr::Assign {
+                    name,
+                    value: Box::new(value),
+                });
+            }
+
+            return Err(self.error(&equals, "Invalid assignment target."));
         }
 
         Ok(expr)
