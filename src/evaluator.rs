@@ -26,6 +26,7 @@ impl Evaluator {
     fn execute(&mut self, stmt: Stmt) -> Result<(), RuntimeError> {
         match stmt {
             Stmt::Expression { expression } => self.expression_stmt(expression),
+            Stmt::If { condition, then_branch, else_branch } => self.if_stmt(condition, then_branch, else_branch),
             Stmt::Print { expression } => self.print_stmt(expression),
             Stmt::Var { name, initializer } => self.var_stmt(name, initializer),
             Stmt::Block { statements } => self.execute_block(statements, Environment::new_enclosed(self.environment.clone())),
@@ -46,6 +47,16 @@ impl Evaluator {
 
     fn expression_stmt(&mut self, expression: Box<Expr>) -> Result<(), RuntimeError> {
         self.evaluate(&expression)?;
+        Ok(())
+    }
+
+    fn if_stmt(&mut self, condition: Box<Expr>, then_branch: Box<Stmt>, else_branch: Option<Box<Stmt>>) -> Result<(), RuntimeError> {
+        let condition_value = self.evaluate(&condition)?;
+        if self.is_truthy(&condition_value) {
+            self.execute(*then_branch)?;
+        } else if let Some(else_stmt) = else_branch {
+            self.execute(*else_stmt)?;
+        }
         Ok(())
     }
 
