@@ -86,7 +86,7 @@ impl Parser {
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
         let condition = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
-        
+
         let then_branch = Box::new(self.statement()?);
         let else_branch = if self.match_token(&[TokenType::Else]) {
             Some(Box::new(self.statement()?))
@@ -145,7 +145,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let expr = self.ternary()?;
+        let expr = self.or()?;
 
         if self.match_token(&[TokenType::Equal]) {
             let equals = self.previous().clone();
@@ -159,6 +159,38 @@ impl Parser {
             }
 
             return Err(self.error(&equals, "Invalid assignment target."));
+        }
+
+        Ok(expr)
+    }
+
+    fn or(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.and()?;
+
+        while self.match_token(&[TokenType::Or]) {
+            let operator = self.previous().clone();
+            let right = self.and()?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.ternary()?;
+
+        while self.match_token(&[TokenType::And]) {
+            let operator = self.previous().clone();
+            let right = self.ternary()?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
 
         Ok(expr)

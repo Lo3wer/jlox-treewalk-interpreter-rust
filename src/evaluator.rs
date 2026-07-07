@@ -81,6 +81,7 @@ impl Evaluator {
             }
             Expr::Grouping { expression } => self.evaluate(expression),
             Expr::Literal { value } => Ok(value.clone()),
+            Expr::Logical { left, operator, right} => self.evaluate_logical(left, operator, right),
             Expr::Unary { operator, right } => {
                 let right_val = self.evaluate(right)?;
                 self.evaluate_unary(operator, &right_val)
@@ -197,6 +198,27 @@ impl Evaluator {
             self.evaluate(then_branch)
         } else {
             self.evaluate(else_branch)
+        }
+    }
+
+    fn evaluate_logical(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Result<Literal, RuntimeError> {
+        let left_literal = self.evaluate(left)?;
+        match operator.token_type() {
+            TokenType::Or => {
+                if self.is_truthy(&left_literal) {
+                    Ok(left_literal)
+                } else {
+                    self.evaluate(right)
+                }
+            }
+            TokenType::And => {
+                if !self.is_truthy(&left_literal) {
+                    Ok(left_literal)
+                } else {
+                    self.evaluate(right)
+                }
+            }
+            _ => Err(self.runtime_error(operator, "Unknown logical operator.")),
         }
     }
 

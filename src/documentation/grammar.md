@@ -15,7 +15,9 @@ printStmt      → "print" expression ";" ;
 expression     → comma ;
 comma          → assignment ( "," assignment )* ;
 assignment     → IDENTIFIER "=" assignment
-               | ternary ;
+               | logic_or ;
+logic_or       → logic_and ( "or" logic_and )* ;
+logic_and      → ternary ( "and" ternary )* ;
 ternary        → equality ( "?" expression ":" ternary )? ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
