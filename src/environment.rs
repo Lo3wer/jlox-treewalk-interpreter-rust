@@ -20,11 +20,11 @@ impl Environment {
             .cloned()
             .ok_or_else(|| RuntimeError {
                 token: name.clone(),
-                message: "Undefined variable.".to_string(),
+                message: format!("Undefined variable '{}'.", name.lexeme()),
             })
     }
 
-    pub fn define(&mut self, name: String, value: Literal) {
-        self.values.insert(name, value);
+    pub fn define(&mut self, name: &Token, value: Literal) {
+        self.values.insert(name.lexeme().to_string(), value);
     }
 }

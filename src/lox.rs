@@ -83,8 +83,10 @@ impl Lox {
         let mut parser = Parser::new(tokens);
         let statements = match parser.parse() {
             Ok(statements) => statements,
-            Err(error) => {
-                self.report_parse_error(&error);
+            Err(parse_errors) => {
+                for error in &parse_errors {
+                    self.report_parse_error(error);
+                }
                 return;
             }
         };

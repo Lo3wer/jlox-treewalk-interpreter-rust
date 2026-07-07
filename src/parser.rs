@@ -6,26 +6,29 @@ use crate::errors::ParseError;
 
 pub struct Parser {
     tokens: Vec<Token>,
+    errors: Vec<ParseError>,
     current: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, current: 0 }
+        Parser { tokens, errors: Vec::new(), current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
+
         while !self.is_at_end() {
-            match self.statement() {
+            match self.declaration() {
                 Ok(stmt) => statements.push(stmt),
                 Err(err) => {
+                    self.errors.push(err);
                     self.synchronize();
-                    return Err(err);
                 }
             }
         }
-        Ok(statements)
+
+        if self.errors.is_empty() { Ok(statements) } else { Err(self.errors.clone()) }
     }
 
     // refer to grammar.md for grammar rules

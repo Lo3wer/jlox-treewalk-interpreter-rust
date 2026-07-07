@@ -44,7 +44,7 @@ impl Evaluator {
 
     fn var_stmt(&mut self, name: Token, initializer: Box<Expr>) -> Result<(), RuntimeError> {
         let value = self.evaluate(&initializer)?;
-        self.environment.define(name.lexeme().to_string(), value);
+        self.environment.define(&name, value);
         Ok(())
     }
 
