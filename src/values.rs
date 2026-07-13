@@ -1,10 +1,10 @@
-use std::fmt;
+use std::{fmt};
 use std::rc::Rc;
 use crate::evaluator::Evaluator;
 use crate::exceptions::RuntimeException;
 use crate::stmt::Stmt;
 use crate::token::Token;
-use crate::environment::Environment;
+use crate::environment::{Environment, EnvRef};
 
 #[derive(Clone)]
 pub enum Literal {
@@ -48,11 +48,12 @@ pub trait Callable {
 pub struct FunctionCallable{
     params: Vec<Token>,
     body: Vec<Stmt>,
+    closure: EnvRef,
 }
 
 impl FunctionCallable {
-    pub fn new(params: Vec<Token>, body: Vec<Stmt>) -> Self {
-        FunctionCallable { params, body }
+    pub fn new(params: Vec<Token>, body: Vec<Stmt>, closure: EnvRef) -> Self {
+        FunctionCallable { params, body, closure }
     }
 }
 
@@ -62,7 +63,7 @@ impl Callable for FunctionCallable {
     }
 
     fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException> {
-        let function_env = Environment::new_enclosed(evaluator.globals());
+        let function_env = Environment::new_enclosed(self.closure.clone());
         for (param, arg) in self.params.iter().zip(arguments.iter()) {
             function_env.borrow_mut().define(param, arg.clone());
         }

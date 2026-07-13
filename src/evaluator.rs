@@ -141,7 +141,7 @@ impl Evaluator {
     }
 
     fn function_stmt(&mut self, name: &Token, params: &[Token], body: &[Stmt]) -> Result<(), RuntimeException> {
-        let function = Literal::Callable(Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec())));
+        let function = Literal::Callable(Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec(), self.environment.clone())));
         self.environment.borrow_mut().define(name, function);
         Ok(())
     }
