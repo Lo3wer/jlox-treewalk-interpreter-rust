@@ -1,5 +1,5 @@
 use crate::values::Literal;
-use crate::errors::RuntimeError;
+use crate::exceptions::RuntimeException;
 use crate::token::Token;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -29,13 +29,13 @@ impl Environment {
         }))
     }
 
-    pub fn get(&self, name: &Token) -> Result<Literal, RuntimeError> {
+    pub fn get(&self, name: &Token) -> Result<Literal, RuntimeException> {
         if let Some(value) = self.values.get(name.lexeme()) {
             return Ok(value.clone());
         } else if let Some(parent) = &self.enclosing {
             return parent.borrow().get(name);
         }
-        Err(RuntimeError {
+        Err(RuntimeException::Error {
             token: name.clone(),
             message: format!("Undefined variable '{}'.", name.lexeme()),
         })
@@ -49,14 +49,14 @@ impl Environment {
         self.values.insert(name.to_string(), value);
     }
 
-    pub fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeError> {
+    pub fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeException> {
         if self.values.contains_key(name.lexeme()) {
             self.values.insert(name.lexeme().to_string(), value);
             Ok(())
         } else if let Some(parent) = &self.enclosing {
             parent.borrow_mut().assign(name, value)
         } else {
-            Err(RuntimeError {
+            Err(RuntimeException::Error {
                 token: name.clone(),
                 message: format!("Undefined variable '{}'.", name.lexeme()),
             })

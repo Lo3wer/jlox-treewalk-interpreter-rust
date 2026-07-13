@@ -1,4 +1,5 @@
 use crate::token::Token;
+use crate::values::Literal;
 
 #[derive(Debug, Clone)]
 pub struct LexError {
@@ -13,7 +14,7 @@ pub struct ParseError {
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeError {
-    pub token: Token,
-    pub message: String,
+pub enum RuntimeException {
+    Error { token: Token, message: String },
+    Return { value: Literal },
 }

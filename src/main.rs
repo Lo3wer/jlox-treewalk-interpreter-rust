@@ -5,7 +5,7 @@ mod values;
 mod expr;
 mod parser;
 mod evaluator;
-mod errors;
+mod exceptions;
 mod stmt;
 mod environment;
 

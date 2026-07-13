@@ -1,4 +1,4 @@
-use crate::errors::RuntimeError;
+use crate::exceptions::RuntimeException;
 use crate::expr::Expr;
 use crate::token::{Token, TokenType};
 use crate::values::{Literal, Callable, FunctionCallable};
@@ -30,7 +30,7 @@ impl Evaluator {
                 0
             }
 
-            fn call(&self, _evaluator: &mut Evaluator, _arguments: &[Literal]) -> Result<Literal, RuntimeError> {
+            fn call(&self, _evaluator: &mut Evaluator, _arguments: &[Literal]) -> Result<Literal, RuntimeException> {
                 let current_time = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .expect("Time went backwards");
@@ -41,14 +41,14 @@ impl Evaluator {
         Literal::Callable(Rc::new(ClockCallable))
     }
 
-    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeException> {
         for statement in statements {
             self.execute(&statement)?;
         }
         Ok(())
     }
 
-    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeException> {
         match stmt {
             Stmt::Expression { expression } => self.expression_stmt(expression),
             Stmt::If { condition, then_branch, else_branch } => {
@@ -57,6 +57,7 @@ impl Evaluator {
             Stmt::Print { expression } => self.print_stmt(expression),
             Stmt::Var { name, initializer } => self.var_stmt(name, initializer),
             Stmt::Function { name, params, body } => self.function_stmt(name, params, body),
+            Stmt::Return { keyword, value } => self.return_stmt(keyword, value),
             Stmt::Block { statements } => {
                 self.execute_block(statements, Environment::new_enclosed(self.environment.clone()))
             }
@@ -64,7 +65,7 @@ impl Evaluator {
         }
     }
 
-    pub fn execute_block(&mut self, statements: &[Stmt], environment: EnvRef) -> Result<(), RuntimeError> {
+    pub fn execute_block(&mut self, statements: &[Stmt], environment: EnvRef) -> Result<(), RuntimeException> {
         let previous = self.environment.clone();
         self.environment = environment;
 
@@ -85,7 +86,18 @@ impl Evaluator {
         self.globals.clone()
     }
 
-    fn expression_stmt(&mut self, expression: &Expr) -> Result<(), RuntimeError> {
+    fn return_stmt(&mut self, _keyword: &Token, value: &Option<Box<Expr>>) -> Result<(), RuntimeException> {
+        let return_value = if let Some(expr) = value {
+            self.evaluate(expr)?
+        } else {
+            Literal::Nil
+        };
+        Err(RuntimeException::Return {
+            value: return_value,
+        })
+    }
+
+    fn expression_stmt(&mut self, expression: &Expr) -> Result<(), RuntimeException> {
         self.evaluate(expression)?;
         Ok(())
     }
@@ -95,7 +107,7 @@ impl Evaluator {
         condition: &Expr,
         then_branch: &Stmt,
         else_branch: &Option<Box<Stmt>>,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), RuntimeException> {
         let condition_value = self.evaluate(condition)?;
         if self.is_truthy(&condition_value) {
             self.execute(then_branch)?;
@@ -105,7 +117,7 @@ impl Evaluator {
         Ok(())
     }
 
-    fn while_stmt(&mut self, condition: &Expr, body: &Stmt) -> Result<(), RuntimeError> {
+    fn while_stmt(&mut self, condition: &Expr, body: &Stmt) -> Result<(), RuntimeException> {
         loop {
             let value = self.evaluate(condition)?;
             if !self.is_truthy(&value) {
@@ -116,25 +128,25 @@ impl Evaluator {
         Ok(())
     }
 
-    fn print_stmt(&mut self, expression: &Expr) -> Result<(), RuntimeError> {
+    fn print_stmt(&mut self, expression: &Expr) -> Result<(), RuntimeException> {
         let value = self.evaluate(expression)?;
         println!("{}", value);
         Ok(())
     }
 
-    fn var_stmt(&mut self, name: &Token, initializer: &Expr) -> Result<(), RuntimeError> {
+    fn var_stmt(&mut self, name: &Token, initializer: &Expr) -> Result<(), RuntimeException> {
         let value = self.evaluate(initializer)?;
         self.environment.borrow_mut().define(name, value);
         Ok(())
     }
 
-    fn function_stmt(&mut self, name: &Token, params: &[Token], body: &[Stmt]) -> Result<(), RuntimeError> {
+    fn function_stmt(&mut self, name: &Token, params: &[Token], body: &[Stmt]) -> Result<(), RuntimeException> {
         let function = Literal::Callable(Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec())));
         self.environment.borrow_mut().define(name, function);
         Ok(())
     }
 
-    fn evaluate(&mut self, expr: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<Literal, RuntimeException> {
         match expr {
             Expr::Binary { left, operator, right } => {
                 let left_val = self.evaluate(left)?;
@@ -169,7 +181,7 @@ impl Evaluator {
         }
     }
 
-    fn evaluate_call(&mut self, callee: &Literal, paren: &Token, arguments: &[Literal]) -> Result<Literal, RuntimeError> {
+    fn evaluate_call(&mut self, callee: &Literal, paren: &Token, arguments: &[Literal]) -> Result<Literal, RuntimeException> {
         match callee {
             Literal::Callable(callable) => {
                 if arguments.len() != callable.arity() {
@@ -181,7 +193,7 @@ impl Evaluator {
         }
     }
 
-    fn evaluate_unary(&self, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
+    fn evaluate_unary(&self, operator: &Token, right: &Literal) -> Result<Literal, RuntimeException> {
         match operator.token_type() {
             TokenType::Minus => match right {
                 Literal::Number(n) => Ok(Literal::Number(-n)),
@@ -193,7 +205,7 @@ impl Evaluator {
     }
 
     /// Evaluates a binary expression based on the operator and operands.
-    fn evaluate_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
+    fn evaluate_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeException> {
         match operator.token_type() {
             TokenType::Plus => self.addition_binary(left, operator, right),
             TokenType::Minus => self.numeric_binary(left, operator, right, |l, r| Literal::Number(l - r)),
@@ -210,7 +222,7 @@ impl Evaluator {
     }
 
     /// Handles addition for numbers and string concatenation.
-    fn addition_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
+    fn addition_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeException> {
         match (left, right) {
                 (Literal::Number(l), Literal::Number(r)) => {
                     Ok(Literal::Number(l + r))
@@ -229,7 +241,7 @@ impl Evaluator {
     }
 
     /// Handles numeric binary operations like subtraction, multiplication, and division.
-    fn numeric_binary<F>(&self, left: &Literal, operator: &Token, right: &Literal, combine: F) -> Result<Literal, RuntimeError>
+    fn numeric_binary<F>(&self, left: &Literal, operator: &Token, right: &Literal, combine: F) -> Result<Literal, RuntimeException>
     where
         F: Fn(f64, f64) -> Literal,
     {
@@ -242,7 +254,7 @@ impl Evaluator {
     }
 
     /// Handles division and checks for division by zero.
-    fn division_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeError> {
+    fn division_binary(&self, left: &Literal, operator: &Token, right: &Literal) -> Result<Literal, RuntimeException> {
         match (left, right) {
             (Literal::Number(l), Literal::Number(r)) if *r == 0.0 => {
                 Err(self.runtime_error(operator, "Division by zero."))
@@ -252,7 +264,7 @@ impl Evaluator {
     }
 
     /// Uses the std::cmp::Ordering to compare two literals and applies the provided comparison function.
-    fn comparison_binary<F>(&self, left: &Literal, operator: &Token, right: &Literal, combine: F) -> Result<Literal, RuntimeError>
+    fn comparison_binary<F>(&self, left: &Literal, operator: &Token, right: &Literal, combine: F) -> Result<Literal, RuntimeException>
     where
         F: Fn(Ordering) -> bool,
     {
@@ -268,14 +280,14 @@ impl Evaluator {
         }
     }
 
-    fn runtime_error(&self, token: &Token, message: &str) -> RuntimeError {
-        RuntimeError {
+    fn runtime_error(&self, token: &Token, message: &str) -> RuntimeException {
+        RuntimeException::Error {
             token: token.clone(),
             message: message.to_string(),
         }
     }
 
-    fn evaluate_ternary(&mut self, condition: &Literal, then_branch: &Expr, else_branch: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate_ternary(&mut self, condition: &Literal, then_branch: &Expr, else_branch: &Expr) -> Result<Literal, RuntimeException> {
         if let Literal::Bool(true) = condition {
             self.evaluate(then_branch)
         } else {
@@ -283,7 +295,7 @@ impl Evaluator {
         }
     }
 
-    fn evaluate_logical(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate_logical(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Result<Literal, RuntimeException> {
         let left_literal = self.evaluate(left)?;
         match operator.token_type() {
             TokenType::Or => {

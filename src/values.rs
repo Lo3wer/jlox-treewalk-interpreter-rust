@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 use crate::evaluator::Evaluator;
-use crate::errors::RuntimeError;
+use crate::exceptions::RuntimeException;
 use crate::stmt::Stmt;
 use crate::token::Token;
 use crate::environment::Environment;
@@ -42,7 +42,7 @@ impl fmt::Debug for Literal {
 
 pub trait Callable {
     fn arity(&self) -> usize;
-    fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeError>;
+    fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException>;
 }
 
 pub struct FunctionCallable{
@@ -61,13 +61,16 @@ impl Callable for FunctionCallable {
         self.params.len()
     }
 
-    fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeError> {
+    fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException> {
         let function_env = Environment::new_enclosed(evaluator.globals());
         for (param, arg) in self.params.iter().zip(arguments.iter()) {
             function_env.borrow_mut().define(param, arg.clone());
         }
-        evaluator.execute_block(&self.body, function_env)?;
-        Ok(Literal::Nil)
+        match evaluator.execute_block(&self.body, function_env) {
+            Ok(()) => Ok(Literal::Nil),
+            Err(RuntimeException::Return { value }) => Ok(value),
+            Err(err) => Err(err),
+        }
     }
 }
 

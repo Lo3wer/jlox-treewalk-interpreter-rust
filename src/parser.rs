@@ -2,7 +2,7 @@ use crate::token::{Token, TokenType};
 use crate::values::Literal;
 use crate::expr::Expr;
 use crate::stmt::Stmt;
-use crate::errors::ParseError;
+use crate::exceptions::ParseError;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -108,8 +108,21 @@ impl Parser {
             return self.while_statement();
         } else if self.match_token(&[TokenType::For]) {
             return self.for_statement();
+        } else if self.match_token(&[TokenType::Return]) {
+            return self.return_statement();
         }
         self.expression_statement()
+    }
+
+    fn return_statement(&mut self) -> Result<Stmt, ParseError> {
+        let keyword = self.previous().clone();
+        let value = if !self.check(&TokenType::Semicolon) {
+            Some(Box::new(self.expression()?))
+        } else {
+            None
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after return value.")?;
+        Ok(Stmt::Return { keyword, value })
     }
 
     fn for_statement(&mut self) -> Result<Stmt, ParseError> {
