@@ -105,6 +105,14 @@ impl Evaluator {
                 let right_val = self.evaluate(right)?;
                 self.evaluate_binary(&left_val, operator, &right_val)
             }
+            Expr::Call { callee, paren, arguments } => {
+                let callee_val = self.evaluate(callee)?;
+                let mut arg_values = Vec::new();
+                for arg in arguments {
+                    arg_values.push(self.evaluate(arg)?);
+                }
+                self.evaluate_call(&callee_val, paren, &arg_values)
+            }
             Expr::Grouping { expression } => self.evaluate(expression),
             Expr::Literal { value } => Ok(value.clone()),
             Expr::Logical { left, operator, right} => self.evaluate_logical(left, operator, right),
@@ -122,6 +130,18 @@ impl Evaluator {
                 self.environment.borrow_mut().assign(name, value_val.clone())?;
                 Ok(value_val)
             }
+        }
+    }
+
+    fn evaluate_call(&self, callee: &Literal, paren: &Token, arguments: &[Literal]) -> Result<Literal, RuntimeError> {
+        match callee {
+            Literal::Callable(callable) => {
+                if arguments.len() != callable.arity() {
+                    return Err(self.runtime_error(paren, &format!("Expected {} arguments but got {}.", callable.arity(), arguments.len())));
+                }
+                callable.call(self, arguments)
+            }
+            _ => Err(self.runtime_error(paren, "Can only call functions and classes.")),
         }
     }
 
