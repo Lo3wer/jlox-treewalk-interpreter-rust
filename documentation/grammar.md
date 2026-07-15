@@ -1,8 +1,10 @@
 Grammar rules based on the Lox language specification with ternary and comma operators
 program        → declaration* EOF ;
-declaration    → funDecl
+declaration    → classDecl
+               | funDecl
                | varDecl
                | statement ;
+classDecl      → "class" IDENTIFIER "{" function* "}" ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;

@@ -1,0 +1,6 @@
+fun test (a, b, c) {
+    var d = a + b + c;
+    return d;
+}
+
+print(test(1, 2, 3));

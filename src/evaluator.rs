@@ -4,6 +4,7 @@ use crate::datastructs::token::{Token, TokenType};
 use crate::datastructs::values::{Literal, Callable, FunctionCallable};
 use crate::datastructs::stmt::Stmt;
 use crate::environment::{Environment, EnvRef};
+use crate::datastructs::class::Class;
 
 use std::cmp::Ordering;
 use std::rc::Rc;
@@ -69,6 +70,7 @@ impl Evaluator {
                 self.execute_block(statements, Environment::new_enclosed(self.environment.clone()))
             }
             Stmt::While { condition, body } => self.while_stmt(condition, body),
+            Stmt::Class { name, methods } => self.class_stmt(name, methods),
         }
     }
 
@@ -87,6 +89,15 @@ impl Evaluator {
 
         self.environment = previous;
         result
+    }
+
+    fn class_stmt(&mut self, name: &Token, methods: &[Stmt]) -> Result<(), RuntimeException> {
+        // For now, we just define the class name in the current environment.
+        // Class methods and other features can be implemented later.
+        self.environment.borrow_mut().define(name, Literal::Nil);
+        let class = Literal::Callable(Rc::new(Class::new(name.lexeme().to_string())));
+        self.environment.borrow_mut().assign(name, class)?;
+        Ok(())
     }
 
     fn return_stmt(&mut self, _keyword: &Token, value: &Option<Box<Expr>>) -> Result<(), RuntimeException> {

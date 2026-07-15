@@ -55,8 +55,23 @@ impl Parser {
             return self.var_declaration();
         } else if self.match_token(&[TokenType::Fun]) {
             return self.function_declaration("function".into());
+        } else if self.match_token(&[TokenType::Class]) {
+            return self.class_declaration();
         }
         self.statement()
+    }
+
+    fn class_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expect class name.")?.clone();
+        self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
+
+        let mut methods = Vec::new();
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
+            methods.push(self.function_declaration("method".into())?);
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
+        Ok(Stmt::Class { name, methods })
     }
 
     fn function_declaration(&mut self, kind: String) -> Result<Stmt, ParseError> {
