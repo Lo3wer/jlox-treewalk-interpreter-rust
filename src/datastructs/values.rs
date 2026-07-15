@@ -40,6 +40,23 @@ impl fmt::Debug for Literal {
     }
 }
 
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Literal::Bool(value) => write!(f, "{}", value),
+            Literal::String(value) => write!(f, "{}", value),
+            Literal::Number(value) => {
+                if value.fract() == 0.0 {
+                    write!(f, "{:.0}", value)
+                } else {
+                    write!(f, "{}", value)
+                }
+            }
+            Literal::Nil => write!(f, "nil"),
+            Literal::Callable(_) => write!(f, "<function>"),
+        }
+    }
+}
 pub trait Callable {
     fn arity(&self) -> usize;
     fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException>;
@@ -75,21 +92,6 @@ impl Callable for FunctionCallable {
     }
 }
 
-
-impl fmt::Display for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Literal::Bool(value) => write!(f, "{}", value),
-            Literal::String(value) => write!(f, "{}", value),
-            Literal::Number(value) => {
-                if value.fract() == 0.0 {
-                    write!(f, "{:.0}", value)
-                } else {
-                    write!(f, "{}", value)
-                }
-            }
-            Literal::Nil => write!(f, "nil"),
-            Literal::Callable(_) => write!(f, "<function>"),
-        }
-    }
+pub enum FunctionType {
+    Function
 }

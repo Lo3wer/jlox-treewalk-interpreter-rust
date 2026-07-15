@@ -14,6 +14,12 @@ pub struct ParseError {
 }
 
 #[derive(Debug, Clone)]
+pub struct ResolveError {
+    pub token: Token,
+    pub message: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum RuntimeException {
     Error { token: Token, message: String },
     Return { value: Literal },

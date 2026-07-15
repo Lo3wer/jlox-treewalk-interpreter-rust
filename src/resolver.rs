@@ -1,28 +1,30 @@
-use crate::datastructs::exceptions::RuntimeException;
+use crate::datastructs::exceptions::ResolveError;
 use crate::datastructs::token::Token;
 use crate::datastructs::stmt::Stmt;
 use crate::datastructs::expr::Expr;
 use crate::evaluator::Evaluator;
+use crate::datastructs::values::FunctionType;
 use std::collections::HashMap;
 
 pub struct Resolver<'a> {
     evaluator: &'a mut Evaluator,
     scopes: Vec<HashMap<String, bool>>,
+    current_function: Option<FunctionType>,
 }
 
 impl<'a> Resolver<'a> {
     pub fn new(evaluator: &'a mut Evaluator) -> Self {
-        Resolver { evaluator, scopes: Vec::new() }
+        Resolver { evaluator, scopes: Vec::new(), current_function: None }
     }
 
-    pub fn resolve(&mut self, statements: &[Stmt]) -> Result<(), RuntimeException> {
+    pub fn resolve(&mut self, statements: &[Stmt]) -> Result<(), ResolveError> {
         for statement in statements {
             self.resolve_stmt(statement)?;
         }
         Ok(())
     }
 
-    fn resolve_stmt(&mut self, statement: &Stmt) -> Result<(), RuntimeException> {
+    fn resolve_stmt(&mut self, statement: &Stmt) -> Result<(), ResolveError> {
         match statement {
             Stmt::Block { statements } => {
                 self.begin_scope();
@@ -30,14 +32,14 @@ impl<'a> Resolver<'a> {
                 self.end_scope();
             }
             Stmt::Var { name, initializer } => {
-                self.declare(name);
+                self.declare(name)?;
                 self.resolve_expr(initializer)?;
                 self.define(name);
             }
             Stmt::Function { name, params, body } => {
-                self.declare(name);
+                self.declare(name)?;
                 self.define(name);
-                self.resolve_function(params, body)?;
+                self.resolve_function(params, body, FunctionType::Function)?;
             }
             Stmt::Expression { expression } => {
                 self.resolve_expr(expression)?;
@@ -52,7 +54,13 @@ impl<'a> Resolver<'a> {
             Stmt::Print { expression } => {
                 self.resolve_expr(expression)?;
             }
-            Stmt::Return { keyword: _, value } => {
+            Stmt::Return { keyword, value } => {
+                if self.current_function.is_none() {
+                    return Err(ResolveError {
+                        token: keyword.clone(),
+                        message: "Cannot return from top-level code.".to_string(),
+                    });
+                }
                 if let Some(val) = value {
                     self.resolve_expr(val)?;
                 }
@@ -65,18 +73,21 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn resolve_function(&mut self, params: &[Token], body: &[Stmt]) -> Result<(), RuntimeException> {
+    fn resolve_function(&mut self, params: &[Token], body: &[Stmt], function_type: FunctionType) -> Result<(), ResolveError> {
+        let enclosing_function = self.current_function.take();
+        self.current_function = Some(function_type);
         self.begin_scope();
         for param in params {
-            self.declare(param);
+            self.declare(param)?;
             self.define(param);
         }
         self.resolve(body)?;
         self.end_scope();
+        self.current_function = enclosing_function;
         Ok(())
     }
 
-    fn resolve_expr(&mut self, expression: &Expr) -> Result<(), RuntimeException> {
+    fn resolve_expr(&mut self, expression: &Expr) -> Result<(), ResolveError> {
         match expression {
             Expr::Assign { name, value } => {
                 self.resolve_expr(value)?;
@@ -85,7 +96,7 @@ impl<'a> Resolver<'a> {
             Expr::Variable { name } => {
                 if let Some(scope) = self.scopes.last() {
                     if let Some(false) = scope.get(name.lexeme()) {
-                        return Err(RuntimeException::Error {
+                        return Err(ResolveError {
                             token: name.clone(),
                             message: "Cannot read local variable in its own initializer.".to_string(),
                         });
@@ -132,10 +143,17 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn declare(&mut self, name: &Token) {
+    fn declare(&mut self, name: &Token) -> Result<(), ResolveError> {
         if let Some(scope) = self.scopes.last_mut() {
+            if scope.contains_key(name.lexeme()) {
+                return Err(ResolveError {
+                    token: name.clone(),
+                    message: "Variable with this name already declared in this scope.".to_string(),
+                });
+            }
             scope.insert(name.lexeme().to_string(), false);
         }
+        Ok(())
     }
 
     fn define(&mut self, name: &Token) {

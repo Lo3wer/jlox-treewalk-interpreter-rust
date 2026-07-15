@@ -2,7 +2,7 @@ use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::evaluator::Evaluator;
 use crate::datastructs::token::TokenType;
-use crate::datastructs::exceptions::{LexError, ParseError, RuntimeException};
+use crate::datastructs::exceptions::{LexError, ParseError, ResolveError, RuntimeException};
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::process;
@@ -34,6 +34,11 @@ impl Lox {
             format!(" at '{}'", error.token.lexeme())
         };
         self.report(error.token.line(), &where_, &error.message);
+    }
+
+    fn report_resolve_error(&mut self, error: &ResolveError) {
+        self.report(error.token.line(), "", &error.message);
+        self.had_error = true;
     }
 
     fn report_runtime_error(&mut self, error: &RuntimeException) {
@@ -114,7 +119,7 @@ impl Lox {
         match resolver.resolve(&statements) {
             Ok(()) => {},
             Err(error) => {
-                self.report_runtime_error(&error);
+                self.report_resolve_error(&error);
                 return;
             }
         }
