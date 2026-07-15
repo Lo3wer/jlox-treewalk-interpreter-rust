@@ -5,7 +5,7 @@ use crate::datastructs::expr::Expr;
 use crate::evaluator::Evaluator;
 use std::collections::HashMap;
 
-struct Resolver<'a> {
+pub struct Resolver<'a> {
     evaluator: &'a mut Evaluator,
     scopes: Vec<HashMap<String, bool>>,
 }

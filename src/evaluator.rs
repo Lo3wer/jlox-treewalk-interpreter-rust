@@ -89,10 +89,6 @@ impl Evaluator {
         result
     }
 
-    pub fn globals(&self) -> EnvRef {
-        self.globals.clone()
-    }
-
     fn return_stmt(&mut self, _keyword: &Token, value: &Option<Box<Expr>>) -> Result<(), RuntimeException> {
         let return_value = if let Some(expr) = value {
             self.evaluate(expr)?
@@ -180,12 +176,18 @@ impl Evaluator {
                 self.evaluate_ternary(&condition_val, then_branch, else_branch)
             }
             Expr::Variable { name } => self.look_up_variable(name, expr),
-            Expr::Assign { name, value } => {
-                let value_val = self.evaluate(value)?;
-                self.environment.borrow_mut().assign(name, value_val.clone())?;
-                Ok(value_val)
-            }
+            Expr::Assign { name, value } => self.evaluate_assign(name, value)
         }
+    }
+
+    fn evaluate_assign(&mut self, name: &Token, value: &Expr) -> Result<Literal, RuntimeException> {
+        let value_val = self.evaluate(value)?;
+        if let Some(depth) = self.locals.get(&Expr::Assign { name: name.clone(), value: Box::new(value.clone()) }) {
+            self.environment.borrow_mut().assign_at(*depth, name, value_val.clone())?;
+        } else {
+            self.globals.borrow_mut().assign(name, value_val.clone())?;
+        }
+        Ok(value_val)
     }
 
     fn look_up_variable(&self, name: &Token, expr: &Expr) -> Result<Literal, RuntimeException> {

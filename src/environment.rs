@@ -75,4 +75,17 @@ impl Environment {
             })
         }
     }
+
+    pub fn assign_at(&mut self, distance: usize, name: &Token, value: Literal) -> Result<(), RuntimeException> {
+        if distance == 0 {
+            self.assign(name, value)
+        } else if let Some(parent) = &self.enclosing {
+            parent.borrow_mut().assign_at(distance - 1, name, value)
+        } else {
+            Err(RuntimeException::Error {
+                token: name.clone(),
+                message: format!("Undefined variable '{}'.", name.lexeme()),
+            })
+        }
+    }
 }

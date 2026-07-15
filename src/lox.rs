@@ -108,8 +108,18 @@ impl Lox {
             }
         };
 
-        // evaluation
+        // resolution
         let mut evaluator = Evaluator::new();
+        let mut resolver = crate::resolver::Resolver::new(&mut evaluator);
+        match resolver.resolve(&statements) {
+            Ok(()) => {},
+            Err(error) => {
+                self.report_runtime_error(&error);
+                return;
+            }
+        }
+
+        // evaluation
         match evaluator.interpret(statements) {
             Ok(()) => {},
             Err(error) => self.report_runtime_error(&error),
