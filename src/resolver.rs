@@ -1,0 +1,158 @@
+use crate::datastructs::exceptions::RuntimeException;
+use crate::datastructs::token::Token;
+use crate::datastructs::stmt::Stmt;
+use crate::datastructs::expr::Expr;
+use crate::evaluator::Evaluator;
+use std::collections::HashMap;
+
+struct Resolver<'a> {
+    evaluator: &'a mut Evaluator,
+    scopes: Vec<HashMap<String, bool>>,
+}
+
+impl<'a> Resolver<'a> {
+    pub fn new(evaluator: &'a mut Evaluator) -> Self {
+        Resolver { evaluator, scopes: Vec::new() }
+    }
+
+    pub fn resolve(&mut self, statements: &[Stmt]) -> Result<(), RuntimeException> {
+        for statement in statements {
+            self.resolve_stmt(statement)?;
+        }
+        Ok(())
+    }
+
+    fn resolve_stmt(&mut self, statement: &Stmt) -> Result<(), RuntimeException> {
+        match statement {
+            Stmt::Block { statements } => {
+                self.begin_scope();
+                self.resolve(statements)?;
+                self.end_scope();
+            }
+            Stmt::Var { name, initializer } => {
+                self.declare(name);
+                self.resolve_expr(initializer)?;
+                self.define(name);
+            }
+            Stmt::Function { name, params, body } => {
+                self.declare(name);
+                self.define(name);
+                self.resolve_function(params, body)?;
+            }
+            Stmt::Expression { expression } => {
+                self.resolve_expr(expression)?;
+            }
+            Stmt::If { condition, then_branch, else_branch } => {
+                self.resolve_expr(condition)?;
+                self.resolve_stmt(then_branch)?;
+                if let Some(else_stmt) = else_branch {
+                    self.resolve_stmt(else_stmt)?;
+                }
+            }
+            Stmt::Print { expression } => {
+                self.resolve_expr(expression)?;
+            }
+            Stmt::Return { keyword: _, value } => {
+                if let Some(val) = value {
+                    self.resolve_expr(val)?;
+                }
+            }
+            Stmt::While { condition, body } => {
+                self.resolve_expr(condition)?;
+                self.resolve_stmt(body)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn resolve_function(&mut self, params: &[Token], body: &[Stmt]) -> Result<(), RuntimeException> {
+        self.begin_scope();
+        for param in params {
+            self.declare(param);
+            self.define(param);
+        }
+        self.resolve(body)?;
+        self.end_scope();
+        Ok(())
+    }
+
+    fn resolve_expr(&mut self, expression: &Expr) -> Result<(), RuntimeException> {
+        match expression {
+            Expr::Assign { name, value } => {
+                self.resolve_expr(value)?;
+                self.resolve_local(expression, name);
+            }
+            Expr::Variable { name } => {
+                if let Some(scope) = self.scopes.last() {
+                    if let Some(false) = scope.get(name.lexeme()) {
+                        return Err(RuntimeException::Error {
+                            token: name.clone(),
+                            message: "Cannot read local variable in its own initializer.".to_string(),
+                        });
+                    }
+                }
+                self.resolve_local(expression, name);
+            }
+            Expr::Binary { left, operator: _, right} => {
+                self.resolve_expr(left)?;
+                self.resolve_expr(right)?;
+            }
+            Expr::Call { callee, paren: _, arguments } => {
+                self.resolve_expr(callee)?;
+                for argument in arguments {
+                    self.resolve_expr(argument)?;
+                }
+            }
+            Expr::Grouping { expression } => {
+                self.resolve_expr(expression)?;
+            }
+            Expr::Literal { value: _ } => {}
+            Expr::Logical { left, operator: _, right } => {
+                self.resolve_expr(left)?;
+                self.resolve_expr(right)?;
+            }
+            Expr::Unary { operator: _, right } => {
+                self.resolve_expr(right)?;
+            }
+            Expr::Ternary { condition, then_branch, else_branch } => {
+                self.resolve_expr(condition)?;
+                self.resolve_expr(then_branch)?;
+                self.resolve_expr(else_branch)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn resolve_local(&mut self, expression: &Expr, name: &Token) {
+        for (i, scope) in self.scopes.iter().rev().enumerate() {
+            if scope.contains_key(name.lexeme()) {
+                self.evaluator.resolve(expression, i);
+                return;
+            }
+        }
+    }
+
+    fn declare(&mut self, name: &Token) {
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.insert(name.lexeme().to_string(), false);
+        }
+    }
+
+    fn define(&mut self, name: &Token) {
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.insert(name.lexeme().to_string(), true);
+        }
+    }
+
+    fn begin_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn end_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+
+
+    
+}

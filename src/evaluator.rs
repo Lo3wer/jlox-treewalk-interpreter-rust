@@ -8,10 +8,12 @@ use crate::environment::{Environment, EnvRef};
 use std::cmp::Ordering;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashMap;
 
 pub struct Evaluator {
     globals: EnvRef,
-    environment: EnvRef
+    locals: HashMap<Expr, usize>,
+    environment: EnvRef,
 }
 
 impl Evaluator {
@@ -19,7 +21,8 @@ impl Evaluator {
         let globals = Environment::new();
         let environment = globals.clone();
         globals.borrow_mut().define_str("clock", Self::define_clock());
-        Evaluator { globals, environment }
+        let locals = HashMap::new();
+        Evaluator { globals, locals, environment }
     }
 
     fn define_clock() -> Literal {
@@ -46,6 +49,10 @@ impl Evaluator {
             self.execute(&statement)?;
         }
         Ok(())
+    }
+
+    pub fn resolve(&mut self, expression: &Expr, depth: usize) {
+        self.locals.insert(expression.clone(), depth);
     }
 
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeException> {
@@ -172,13 +179,20 @@ impl Evaluator {
                 let condition_val = self.evaluate(condition)?;
                 self.evaluate_ternary(&condition_val, then_branch, else_branch)
             }
-            Expr::Variable { name } => self.environment.borrow().get(name),
+            Expr::Variable { name } => self.look_up_variable(name, expr),
             Expr::Assign { name, value } => {
                 let value_val = self.evaluate(value)?;
                 self.environment.borrow_mut().assign(name, value_val.clone())?;
                 Ok(value_val)
             }
         }
+    }
+
+    fn look_up_variable(&self, name: &Token, expr: &Expr) -> Result<Literal, RuntimeException> {
+        if let Some(depth) = self.locals.get(expr) {           
+            return self.environment.borrow().get_at(*depth, name);
+        }
+        self.globals.borrow().get(name)
     }
 
     fn evaluate_call(&mut self, callee: &Literal, paren: &Token, arguments: &[Literal]) -> Result<Literal, RuntimeException> {

@@ -1,7 +1,8 @@
 use super::values::Literal;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,
@@ -29,6 +30,22 @@ pub struct Token {
     lexeme: String,
     literal: Option<Literal>,
     line: usize,
+}
+
+impl PartialEq for Token {
+    fn eq(&self, other: &Self) -> bool {
+        self.token_type == other.token_type && self.lexeme == other.lexeme && self.line == other.line
+    }
+}
+
+impl Eq for Token {}
+
+impl Hash for Token {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.token_type.hash(state);
+        self.lexeme.hash(state);
+        self.line.hash(state);
+    }
 }
 
 impl Token {

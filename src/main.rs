@@ -4,6 +4,7 @@ mod datastructs;
 mod parser;
 mod evaluator;
 mod environment;
+mod resolver;
 
 use lox::Lox;
 use std::process;

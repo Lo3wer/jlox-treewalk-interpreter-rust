@@ -41,6 +41,19 @@ impl Environment {
         })
     }
 
+    pub fn get_at(&self, distance: usize, name: &Token) -> Result<Literal, RuntimeException> {
+        if distance == 0 {
+            self.get(name)
+        } else if let Some(parent) = &self.enclosing {
+            parent.borrow().get_at(distance - 1, name)
+        } else {
+            Err(RuntimeException::Error {
+                token: name.clone(),
+                message: format!("Undefined variable '{}'.", name.lexeme()),
+            })
+        }
+    }
+
     pub fn define(&mut self, name: &Token, value: Literal) {
         self.values.insert(name.lexeme().to_string(), value);
     }
