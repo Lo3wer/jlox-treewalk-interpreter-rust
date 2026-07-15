@@ -181,6 +181,13 @@ impl Evaluator {
                 }
                 self.evaluate_call(&callee_val, paren, &arg_values)
             }
+            Expr::Get { object, name } => {
+                let object_val = self.evaluate(object)?;
+                match object_val {
+                    Literal::Instance(instance) => instance.get(name),
+                    _ => Err(self.runtime_error(name, "Only instances have properties.")),
+                }
+            }
             Expr::Grouping { expression } => self.evaluate(expression),
             Expr::Literal { value } => Ok(value.clone()),
             Expr::Logical { left, operator, right} => self.evaluate_logical(left, operator, right),

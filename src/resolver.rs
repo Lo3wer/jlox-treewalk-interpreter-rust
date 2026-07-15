@@ -118,6 +118,9 @@ impl<'a> Resolver<'a> {
                     self.resolve_expr(argument)?;
                 }
             }
+            Expr::Get { object, name: _ } => {
+                self.resolve_expr(object)?;
+            }
             Expr::Grouping { expression } => {
                 self.resolve_expr(expression)?;
             }
