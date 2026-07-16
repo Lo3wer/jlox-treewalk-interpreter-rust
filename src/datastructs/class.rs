@@ -38,10 +38,19 @@ impl Callable for Class {
     }
 
     fn arity(&self) -> usize {
-        0
+        if let Some(initializer) = self.find_method("init") {
+            initializer.arity()
+        } else {
+            0
+        }
     }
 
-    fn call(&self, _evaluator: &mut Evaluator, _arguments: &[Literal]) -> Result<Literal, RuntimeException> {
-        Ok(Literal::Instance(Rc::new(RefCell::new(Instance::new(self.name.clone(), self.methods.clone())))))
+    fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException> {
+        let instance = Rc::new(RefCell::new(Instance::new(self.name.clone(), self.methods.clone())));
+        let initializer = self.find_method("init");
+        if let Some(initializer) = initializer {
+            initializer.bind(instance.clone()).call(evaluator, arguments)?;
+        }
+        Ok(Literal::Instance(instance.clone()))
     }
 }

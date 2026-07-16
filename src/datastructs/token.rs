@@ -58,6 +58,10 @@ impl Token {
         }
     }
 
+    pub fn identifier(name: &str) -> Self {
+        Token::new(TokenType::Identifier, name.to_string(), None, 0)
+    }
+
     pub fn token_type(&self) -> TokenType {
         self.token_type
     }

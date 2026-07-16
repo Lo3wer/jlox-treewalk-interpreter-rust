@@ -14,7 +14,7 @@ pub enum Literal {
     String(String),
     Number(f64),
     Callable(Rc<dyn Callable>),
-    Instance(Rc<RefCell<super::instance::Instance>>),
+    Instance(Rc<RefCell<Instance>>),
     Nil,
 }
 
@@ -73,11 +73,12 @@ pub struct FunctionCallable{
     params: Vec<Token>,
     body: Vec<Stmt>,
     closure: EnvRef,
+    is_initializer: bool,
 }
 
 impl FunctionCallable {
-    pub fn new(params: Vec<Token>, body: Vec<Stmt>, closure: EnvRef) -> Self {
-        FunctionCallable { params, body, closure }
+    pub fn new(params: Vec<Token>, body: Vec<Stmt>, closure: EnvRef, is_initializer: bool) -> Self {
+        FunctionCallable { params, body, closure, is_initializer }
     }
 }
 
@@ -90,11 +91,12 @@ impl fmt::Display for FunctionCallable {
 impl Callable for FunctionCallable {
     fn bind(&self, instance: Rc<RefCell<Instance>>) -> Rc<dyn Callable> {
         let bound_env = Environment::new_enclosed(self.closure.clone());
-        bound_env.borrow_mut().define_str("this", Literal::Instance(instance));
+        bound_env.borrow_mut().define(&Token::identifier("this"), Literal::Instance(instance));
         Rc::new(FunctionCallable {
             params: self.params.clone(),
             body: self.body.clone(),
             closure: bound_env,
+            is_initializer: self.is_initializer,
         })
     }
 
@@ -106,6 +108,9 @@ impl Callable for FunctionCallable {
         let function_env = Environment::new_enclosed(self.closure.clone());
         for (param, arg) in self.params.iter().zip(arguments.iter()) {
             function_env.borrow_mut().define(param, arg.clone());
+        }
+        if self.is_initializer {
+            return self.closure.borrow().get_at(0, &Token::identifier("init"));
         }
         match evaluator.execute_block(&self.body, function_env) {
             Ok(()) => Ok(Literal::Nil),

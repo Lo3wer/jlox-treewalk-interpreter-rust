@@ -58,10 +58,6 @@ impl Environment {
         self.values.insert(name.lexeme().to_string(), value);
     }
 
-    pub fn define_str(&mut self, name: &str, value: Literal) {
-        self.values.insert(name.to_string(), value);
-    }
-
     pub fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeException> {
         if self.values.contains_key(name.lexeme()) {
             self.values.insert(name.lexeme().to_string(), value);

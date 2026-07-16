@@ -23,7 +23,7 @@ impl Evaluator {
     pub fn new() -> Self {
         let globals = Environment::new();
         let environment = globals.clone();
-        globals.borrow_mut().define_str("clock", Self::define_clock());
+        globals.borrow_mut().define(&Token::identifier("clock"), Self::define_clock());
         let locals = HashMap::new();
         Evaluator { globals, locals, environment }
     }
@@ -108,7 +108,7 @@ impl Evaluator {
         let mut method_map = HashMap::new();
         for method in methods {
             if let Stmt::Function { name: method_name, params, body } = method {
-                let function = Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec(), self.environment.clone()));
+                let function = Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec(), self.environment.clone(), method_name.lexeme() == "init"));
                 method_map.insert(method_name.lexeme().to_string(), function as Rc<dyn Callable>);
             }
         }
@@ -172,7 +172,7 @@ impl Evaluator {
     }
 
     fn function_stmt(&mut self, name: &Token, params: &[Token], body: &[Stmt]) -> Result<(), RuntimeException> {
-        let function = Literal::Callable(Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec(), self.environment.clone())));
+        let function = Literal::Callable(Rc::new(FunctionCallable::new(params.to_vec(), body.to_vec(), self.environment.clone(), false)));
         self.environment.borrow_mut().define(name, function);
         Ok(())
     }
