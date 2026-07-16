@@ -3,18 +3,19 @@ use crate::datastructs::token::Token;
 use crate::datastructs::stmt::Stmt;
 use crate::datastructs::expr::Expr;
 use crate::evaluator::Evaluator;
-use crate::datastructs::values::FunctionType;
+use crate::datastructs::values::{ClassType, FunctionType};
 use std::collections::HashMap;
 
 pub struct Resolver<'a> {
     evaluator: &'a mut Evaluator,
     scopes: Vec<HashMap<String, bool>>,
     current_function: Option<FunctionType>,
+    current_class: Option<ClassType>,
 }
 
 impl<'a> Resolver<'a> {
     pub fn new(evaluator: &'a mut Evaluator) -> Self {
-        Resolver { evaluator, scopes: Vec::new(), current_function: None }
+        Resolver { evaluator, scopes: Vec::new(), current_function: None, current_class: None }
     }
 
     pub fn resolve(&mut self, statements: &[Stmt]) -> Result<(), ResolveError> {
@@ -70,6 +71,8 @@ impl<'a> Resolver<'a> {
                 self.resolve_stmt(body)?;
             }
             Stmt::Class { name, methods} => {
+                let enclosing_class = self.current_class.take();
+                self.current_class = Some(ClassType::Class);
                 self.declare(name)?;
                 self.define(name);
 
@@ -83,6 +86,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 self.end_scope();
+                self.current_class = enclosing_class;
             }
         }
         Ok(())
@@ -145,6 +149,12 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(value)?;
             }
             Expr::This { keyword } => {
+                if self.current_class.is_none() {
+                    return Err(ResolveError {
+                        token: keyword.clone(),
+                        message: "Cannot use 'this' outside of a class.".to_string(),
+                    });
+                }
                 self.resolve_local(expression, keyword);
             }
             Expr::Unary { operator: _, right } => {

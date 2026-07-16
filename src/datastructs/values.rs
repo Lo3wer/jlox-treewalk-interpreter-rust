@@ -119,3 +119,7 @@ pub enum FunctionType {
     Function,
     Method,
 }
+
+pub enum ClassType {
+    Class,
+}
