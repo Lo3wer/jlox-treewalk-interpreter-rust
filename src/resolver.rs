@@ -72,11 +72,17 @@ impl<'a> Resolver<'a> {
             Stmt::Class { name, methods} => {
                 self.declare(name)?;
                 self.define(name);
+
+                self.begin_scope();
+                self.scopes.last_mut().unwrap().insert("this".to_string(), true);
+
                 for method in methods {
-                    if let Stmt::Function { name: method_name, params, body } = method {
+                    if let Stmt::Function { name: _method_name, params, body } = method {
                         self.resolve_function(params, body, FunctionType::Method)?;
                     }
                 }
+
+                self.end_scope();
             }
         }
         Ok(())
@@ -137,6 +143,9 @@ impl<'a> Resolver<'a> {
             Expr::Set { object, name: _, value } => {
                 self.resolve_expr(object)?;
                 self.resolve_expr(value)?;
+            }
+            Expr::This { keyword } => {
+                self.resolve_local(expression, keyword);
             }
             Expr::Unary { operator: _, right } => {
                 self.resolve_expr(right)?;

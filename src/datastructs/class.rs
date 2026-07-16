@@ -33,6 +33,10 @@ impl fmt::Display for Class {
 }
 
 impl Callable for Class {
+    fn bind(&self, _instance: Rc<RefCell<Instance>>) -> Rc<dyn Callable> {
+        Rc::new(Class { name: self.name.clone(), methods: self.methods.clone() })
+    }
+
     fn arity(&self) -> usize {
         0
     }

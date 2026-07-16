@@ -6,6 +6,7 @@ use super::exceptions::RuntimeException;
 use super::stmt::Stmt;
 use super::token::Token;
 use crate::environment::{Environment, EnvRef};
+use super::instance::Instance;
 
 #[derive(Clone)]
 pub enum Literal {
@@ -63,6 +64,7 @@ impl fmt::Display for Literal {
     }
 }
 pub trait Callable: fmt::Display {
+    fn bind(&self, instance: Rc<RefCell<Instance>>) -> Rc<dyn Callable>;
     fn arity(&self) -> usize;
     fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException>;
 }
@@ -86,6 +88,16 @@ impl fmt::Display for FunctionCallable {
 }
 
 impl Callable for FunctionCallable {
+    fn bind(&self, instance: Rc<RefCell<Instance>>) -> Rc<dyn Callable> {
+        let bound_env = Environment::new_enclosed(self.closure.clone());
+        bound_env.borrow_mut().define_str("this", Literal::Instance(instance));
+        Rc::new(FunctionCallable {
+            params: self.params.clone(),
+            body: self.body.clone(),
+            closure: bound_env,
+        })
+    }
+
     fn arity(&self) -> usize {
         self.params.len()
     }

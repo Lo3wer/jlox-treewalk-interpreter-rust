@@ -38,6 +38,9 @@ pub enum Expr {
         name: Token,
         value: Box<Expr>,
     },
+    This {
+        keyword: Token,
+    },
     Unary {
         operator: Token,
         right: Box<Expr>,
@@ -63,6 +66,7 @@ impl PartialEq for Expr {
             (Expr::Literal { .. }, Expr::Literal { .. }) => std::mem::discriminant(self) == std::mem::discriminant(other),
             (Expr::Logical { left: l1, operator: o1, right: r1 }, Expr::Logical { left: l2, operator: o2, right: r2 }) => l1 == l2 && o1 == o2 && r1 == r2,
             (Expr::Set { object: o1, name: n1, value: v1 }, Expr::Set { object: o2, name: n2, value: v2 }) => o1 == o2 && n1 == n2 && v1 == v2,
+            (Expr::This { keyword: k1 }, Expr::This { keyword: k2 }) => k1 == k2,
             (Expr::Unary { operator: o1, right: r1 }, Expr::Unary { operator: o2, right: r2 }) => o1 == o2 && r1 == r2,
             (Expr::Ternary { condition: c1, then_branch: t1, else_branch: e1 }, Expr::Ternary { condition: c2, then_branch: t2, else_branch: e2 }) => c1 == c2 && t1 == t2 && e1 == e2,
             (Expr::Variable { name: n1 }, Expr::Variable { name: n2 }) => n1 == n2,
@@ -85,6 +89,7 @@ impl Hash for Expr {
             Expr::Literal { .. } => {}
             Expr::Logical { left, operator, right } => { left.hash(state); operator.hash(state); right.hash(state); }
             Expr::Set { object, name, value } => { object.hash(state); name.hash(state); value.hash(state); }
+            Expr::This { keyword } => { keyword.hash(state); }
             Expr::Unary { operator, right } => { operator.hash(state); right.hash(state); }
             Expr::Ternary { condition, then_branch, else_branch } => { condition.hash(state); then_branch.hash(state); else_branch.hash(state); }
             Expr::Variable { name } => { name.hash(state); }

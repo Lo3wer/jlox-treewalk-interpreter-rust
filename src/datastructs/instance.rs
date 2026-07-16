@@ -1,4 +1,5 @@
 use std::fmt;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -17,12 +18,12 @@ impl Instance {
         Instance { class, methods, fields: HashMap::new() }
     }
 
-    pub fn get(&self, name: &Token) -> Result<Literal, RuntimeException> {
+    pub fn get(&self, this: Rc<RefCell<Instance>>, name: &Token) -> Result<Literal, RuntimeException> {
         if let Some(value) = self.fields.get(name.lexeme()) {
             return Ok(value.clone());
         }
         if let Some(method) = self.methods.get(name.lexeme()) {
-            return Ok(Literal::Callable(method.clone()));
+            return Ok(Literal::Callable(method.bind(this)));
         }
         Err(RuntimeException::Error {
             token: name.clone(),

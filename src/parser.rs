@@ -487,6 +487,9 @@ impl Parser {
                 .ok_or_else(|| self.error(self.previous(), "Expected a literal value."))?;
             return Ok(Expr::Literal { value: literal });
         }
+        if self.match_token(&[TokenType::This]) {
+            return Ok(Expr::This { keyword: self.previous().clone() });
+        }
         if self.match_token(&[TokenType::Identifier]) {
             return Ok(Expr::Variable { name: self.previous().clone() });
         }

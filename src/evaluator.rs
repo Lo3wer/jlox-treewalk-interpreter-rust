@@ -3,9 +3,11 @@ use crate::datastructs::expr::Expr;
 use crate::datastructs::token::{Token, TokenType};
 use crate::datastructs::values::{Literal, Callable, FunctionCallable};
 use crate::datastructs::stmt::Stmt;
+use crate::datastructs::instance::Instance;
 use crate::environment::{Environment, EnvRef};
 use crate::datastructs::class::Class;
 
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -36,6 +38,10 @@ impl Evaluator {
         }
 
         impl Callable for ClockCallable {
+            fn bind(&self, _instance: Rc<RefCell<Instance>>) -> Rc<dyn Callable> {
+                Rc::new(ClockCallable)
+            }
+
             fn arity(&self) -> usize {
                 0
             }
@@ -207,6 +213,7 @@ impl Evaluator {
                 self.evaluate_ternary(&condition_val, then_branch, else_branch)
             }
             Expr::Variable { name } => self.look_up_variable(name, expr),
+            Expr::This { keyword } => self.look_up_variable(keyword, expr),
             Expr::Assign { name, value } => self.evaluate_assign(name, value)
         }
     }
@@ -242,7 +249,7 @@ impl Evaluator {
 
     fn evaluate_get(&mut self, object: &Literal, name: &Token) -> Result<Literal, RuntimeException> {
         match object {
-            Literal::Instance(instance) => instance.borrow().get(name),
+            Literal::Instance(instance) => instance.borrow().get(instance.clone(), name),
             _ => Err(self.runtime_error(name, "Only instances have properties.")),
         }
     }
