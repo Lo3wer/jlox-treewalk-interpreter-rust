@@ -62,6 +62,12 @@ impl<'a> Resolver<'a> {
                         message: "Cannot return from top-level code.".to_string(),
                     });
                 }
+                if self.current_function == Some(FunctionType::Initializer) {
+                    return Err(ResolveError {
+                        token: keyword.clone(),
+                        message: "Cannot return a value from an initializer.".to_string(),
+                    });
+                }
                 if let Some(val) = value {
                     self.resolve_expr(val)?;
                 }
@@ -81,7 +87,11 @@ impl<'a> Resolver<'a> {
 
                 for method in methods {
                     if let Stmt::Function { name: _method_name, params, body } = method {
-                        self.resolve_function(params, body, FunctionType::Method)?;
+                        if name.lexeme() == "init" {
+                            self.resolve_function(params, body, FunctionType::Initializer)?;
+                        } else {
+                            self.resolve_function(params, body, FunctionType::Method)?;
+                        }
                     }
                 }
 

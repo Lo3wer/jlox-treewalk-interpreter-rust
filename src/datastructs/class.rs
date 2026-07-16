@@ -16,14 +16,6 @@ impl Class {
     pub fn new(name: String, methods: HashMap<String, Rc<dyn Callable>>) -> Self {
         Class { name, methods }
     }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn find_method(&self, name: &str) -> Option<Rc<dyn Callable>> {
-        self.methods.get(name).cloned()
-    }
 }
 
 impl fmt::Display for Class {
@@ -38,7 +30,7 @@ impl Callable for Class {
     }
 
     fn arity(&self) -> usize {
-        if let Some(initializer) = self.find_method("init") {
+        if let Some(initializer) = self.methods.get("init").cloned() {
             initializer.arity()
         } else {
             0
@@ -47,7 +39,7 @@ impl Callable for Class {
 
     fn call(&self, evaluator: &mut Evaluator, arguments: &[Literal]) -> Result<Literal, RuntimeException> {
         let instance = Rc::new(RefCell::new(Instance::new(self.name.clone(), self.methods.clone())));
-        let initializer = self.find_method("init");
+        let initializer = self.methods.get("init").cloned();
         if let Some(initializer) = initializer {
             initializer.bind(instance.clone()).call(evaluator, arguments)?;
         }

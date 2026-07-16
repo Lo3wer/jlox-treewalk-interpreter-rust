@@ -114,14 +114,21 @@ impl Callable for FunctionCallable {
         }
         match evaluator.execute_block(&self.body, function_env) {
             Ok(()) => Ok(Literal::Nil),
-            Err(RuntimeException::Return { value }) => Ok(value),
+            Err(RuntimeException::Return { value }) => {
+                if self.is_initializer {
+                    return self.closure.borrow().get_at(0, &Token::identifier("init"));
+                }
+                Ok(value)
+            },
             Err(err) => Err(err),
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionType {
     Function,
+    Initializer,
     Method,
 }
 
