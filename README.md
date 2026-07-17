@@ -1,4 +1,4 @@
-# lox-ast-rust
+# jlox-treewalk-interpreter-rust
 Rust AST lox interpreter
 
 ## Usage
