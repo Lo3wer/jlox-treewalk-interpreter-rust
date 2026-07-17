@@ -5,6 +5,8 @@ pub enum FunctionType {
     Initializer,
 }
 
+#[derive(PartialEq)]
 pub enum ClassType {
     Class,
+    Subclass,
 }

@@ -91,6 +91,7 @@ impl<'a> Resolver<'a> {
                             });
                         }
                     }
+                    self.current_class = Some(ClassType::Subclass);
                     self.resolve_expr(&superclass_expr)?;
                     self.begin_scope();
                     self.scopes.last_mut().unwrap().insert("super".to_string(), true);
@@ -176,6 +177,17 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(value)?;
             }
             Expr::Super { keyword, method: _ } => {
+                if self.current_class.is_none() {
+                    return Err(ResolveError {
+                        token: keyword.clone(),
+                        message: "Cannot use 'super' outside of a class.".to_string(),
+                    });
+                } else if self.current_class != Some(ClassType::Subclass) {
+                    return Err(ResolveError {
+                        token: keyword.clone(),
+                        message: "Cannot use 'super' in a class with no superclass.".to_string(),
+                    });
+                }
                 self.resolve_local(expression, keyword);
             }
             Expr::This { keyword } => {
