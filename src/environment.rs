@@ -8,7 +8,7 @@ use std::cell::RefCell;
 pub type EnvRef = Rc<RefCell<Environment>>;
 
 pub struct Environment {
-    enclosing: Option<EnvRef>,
+    pub enclosing: Option<EnvRef>,
     values: HashMap<String, Literal>,
 }
 

@@ -86,6 +86,15 @@ impl Evaluator {
             }
         }
         self.environment.borrow_mut().define(name, Literal::Nil);
+
+        if superclass_value.is_some() {
+            self.environment = Environment::new_enclosed(self.environment.clone());
+            let sv = superclass_value.clone().unwrap();
+            self.environment.borrow_mut().define(&Token::identifier("super"), Literal::Callable(sv as Rc<dyn Callable>));
+        }
+
+        let has_superclass = superclass_value.is_some();
+
         let mut method_map = HashMap::new();
         for method in methods {
             if let Stmt::Function { name: method_name, params, body } = method {
@@ -94,6 +103,12 @@ impl Evaluator {
             }
         }
         let class = Literal::Callable(Rc::new(Class::new(name.lexeme().to_string(), superclass_value, method_map)));
+
+        if has_superclass {
+            let enclosing = self.environment.borrow().enclosing.as_ref().unwrap().clone();
+            self.environment = enclosing;
+        }
+
         self.environment.borrow_mut().assign(name, class)?;
         Ok(())
     }
@@ -195,7 +210,25 @@ impl Evaluator {
             }
             Expr::Variable { name } => self.look_up_variable(name, expr),
             Expr::This { keyword } => self.look_up_variable(keyword, expr),
-            Expr::Assign { name, value } => self.evaluate_assign(name, value)
+            Expr::Assign { name, value } => self.evaluate_assign(name, value),
+            Expr::Super { keyword, method } => {
+                if let Some(depth) = self.locals.get(expr) {
+                    let superclass = self.environment.borrow().get_at(*depth, keyword)?;
+                    let this = self.environment.borrow().get_at(*depth - 1, &Token::identifier("this"))?;
+                    if let Literal::Callable(callable) = superclass {
+                        if let Some(class) = callable.as_any().downcast_ref::<Class>() {
+                            if let Some(method) = class.find_method(&method.lexeme()) {
+                                if let Literal::Instance(instance) = this {
+                                    return Ok(Literal::Callable(method.bind(instance)));
+                                }
+                            } else {
+                                return Err(self.runtime_error(method, &format!("Undefined property '{}'.", method.lexeme())));
+                            }
+                        }
+                    }
+                }
+                Err(self.runtime_error(keyword, "Superclass not found."))
+            }
         }
     }
 

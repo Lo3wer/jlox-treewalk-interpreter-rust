@@ -92,6 +92,8 @@ impl<'a> Resolver<'a> {
                         }
                     }
                     self.resolve_expr(&superclass_expr)?;
+                    self.begin_scope();
+                    self.scopes.last_mut().unwrap().insert("super".to_string(), true);
                 }
 
                 self.begin_scope();
@@ -108,6 +110,9 @@ impl<'a> Resolver<'a> {
                 }
 
                 self.end_scope();
+                if superclass.is_some() {
+                    self.end_scope();
+                }
                 self.current_class = enclosing_class;
             }
         }
@@ -169,6 +174,9 @@ impl<'a> Resolver<'a> {
             Expr::Set { object, name: _, value } => {
                 self.resolve_expr(object)?;
                 self.resolve_expr(value)?;
+            }
+            Expr::Super { keyword, method: _ } => {
+                self.resolve_local(expression, keyword);
             }
             Expr::This { keyword } => {
                 if self.current_class.is_none() {

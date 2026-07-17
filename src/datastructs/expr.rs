@@ -38,6 +38,10 @@ pub enum Expr {
         name: Token,
         value: Box<Expr>,
     },
+    Super {
+        keyword: Token,
+        method: Token,
+    },
     This {
         keyword: Token,
     },
@@ -93,6 +97,7 @@ impl Hash for Expr {
             Expr::Unary { operator, right } => { operator.hash(state); right.hash(state); }
             Expr::Ternary { condition, then_branch, else_branch } => { condition.hash(state); then_branch.hash(state); else_branch.hash(state); }
             Expr::Variable { name } => { name.hash(state); }
+            Expr::Super { keyword, method } => { keyword.hash(state); method.hash(state); }
         }
     }
 }
