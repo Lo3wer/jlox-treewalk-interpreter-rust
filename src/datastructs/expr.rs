@@ -70,6 +70,7 @@ impl PartialEq for Expr {
             (Expr::Literal { .. }, Expr::Literal { .. }) => std::mem::discriminant(self) == std::mem::discriminant(other),
             (Expr::Logical { left: l1, operator: o1, right: r1 }, Expr::Logical { left: l2, operator: o2, right: r2 }) => l1 == l2 && o1 == o2 && r1 == r2,
             (Expr::Set { object: o1, name: n1, value: v1 }, Expr::Set { object: o2, name: n2, value: v2 }) => o1 == o2 && n1 == n2 && v1 == v2,
+            (Expr::Super { keyword: k1, method: m1 }, Expr::Super { keyword: k2, method: m2 }) => k1 == k2 && m1 == m2,
             (Expr::This { keyword: k1 }, Expr::This { keyword: k2 }) => k1 == k2,
             (Expr::Unary { operator: o1, right: r1 }, Expr::Unary { operator: o2, right: r2 }) => o1 == o2 && r1 == r2,
             (Expr::Ternary { condition: c1, then_branch: t1, else_branch: e1 }, Expr::Ternary { condition: c2, then_branch: t2, else_branch: e2 }) => c1 == c2 && t1 == t2 && e1 == e2,

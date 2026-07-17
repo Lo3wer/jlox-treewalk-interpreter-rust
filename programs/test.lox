@@ -5,8 +5,15 @@ fun test (a, b, c) {
 
 print(test(1, 2, 3));
 
-class Bacon {
+class Food {
   eat() {
+    print "eating :D";
+  }
+}
+
+class Bacon < Food {
+  eat() {
+    super.eat();
     print "Crunch crunch crunch!";
   }
 }
