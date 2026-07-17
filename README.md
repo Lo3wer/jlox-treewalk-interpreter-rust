@@ -1,5 +1,5 @@
 # jlox-treewalk-interpreter-rust
-Rust AST lox interpreter
+Rust implementation of the jlox interpreter. Interprets lox.
 
 ## Usage
 
